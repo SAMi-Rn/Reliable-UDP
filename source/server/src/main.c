@@ -64,6 +64,7 @@ int main(int argc, char **argv)
             printf("window number: %u\n", pt.hd.window_size);
             printf("flags: %u\n", pt.hd.flags);
             printf("time: %ld\n", pt.hd.tv.tv_sec);
+            printf("time: %s\n", pt.data);
         }
     }
     return 0;
