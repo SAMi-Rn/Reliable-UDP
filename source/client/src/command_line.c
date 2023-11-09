@@ -8,16 +8,17 @@
 #include <inttypes.h>
 #include "command_line.h"
 
-int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address, char **port_str, struct fsm_error *err)
+int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address, char **port_str, uint8_t *window_size, struct fsm_error *err)
 {
     int opt;
-    bool i_flag, p_flag;
+    bool i_flag, p_flag, w_flag;
 
     opterr = 0;
     i_flag = 0;
     p_flag = 0;
+    w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "i:p:h")) != -1)
+    while ((opt = getopt(argc, argv, "i:p:w:h")) != -1)
     {
         switch (opt)
         {
@@ -55,6 +56,24 @@ int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address,
                 *port_str = optarg;
                 break;
             }
+            case 'w':
+            {
+                if (w_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-w' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                char *endptr;
+                w_flag++;
+                *window_size = (uint8_t *) strtoumax(optarg, &endptr, 10);
+                break;
+            }
             case 'h':
             {
                 usage(argv[0]);
@@ -78,15 +97,15 @@ int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address,
             }
         }
     }
-    if (optind == argc)
-    {
-        SET_ERROR(err, "Need to pass at least one file to send.");
-        char message[40];
-
-        snprintf(message, sizeof(message), "Need to pass at least one file to send.");
-        usage(argv[0]);
-        return -1;
-    }
+//    if (optind == argc)
+//    {
+//        SET_ERROR(err, "Need to pass at least one file to send.");
+//        char message[40];
+//
+//        snprintf(message, sizeof(message), "Need to pass at least one file to send.");
+//        usage(argv[0]);
+//        return -1;
+//    }
 
 //    for (int i = optind; i < argc; i++)
 //    {
