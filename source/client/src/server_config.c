@@ -14,6 +14,39 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
 
     return sockfd;
 }
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+int read_keyboard(char *buffer, uint32_t buffer_size) {
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+
+    printf("\nEnter string below [ctrl + d] to quit\n");
+
+    read = getline(&line, &len, stdin);
+
+    if (read == -1) {
+        free(line);
+        return -1;
+    }
+
+    uint32_t size = buffer_size - strlen(buffer) - 1;
+
+    if ((size_t)read > size) {
+        free(line);
+        return -1;
+    }
+
+    strncat(buffer, line, read - 1);
+
+    free(line);
+    buffer[buffer_size - 1] = '\0';
+
+    return 0;
+}
+
 
 //int socket_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err)
 //{

@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(60000);
-    server_addr.sin_addr.s_addr = inet_addr("192.168.1.83");
+    server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
 
     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
 
