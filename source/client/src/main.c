@@ -33,7 +33,6 @@ int main(int argc, char **argv)
 
     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
 
-//    bind(sd, (struct sockaddr*) &server_addr, sizeof(server_addr));
 
     struct packet pt;
 
@@ -45,9 +44,20 @@ int main(int argc, char **argv)
     pt.hd.flags = 2;
     gettimeofday(&pt.hd.tv, NULL);
 
-    printf("size packet: %lu\ndata: %lu\nheader: %lu", sizeof(pt), sizeof(pt.data), sizeof(pt.hd));
-    printf("\nseq: %lu\nack: %lu", sizeof(pt.hd.sequence_number), sizeof(pt.hd.acknowledgment_number));
-    printf("\ntv: %lu\nflags: %lu\nwindow: %lu", sizeof(pt.hd.tv), sizeof(pt.hd.flags),sizeof(pt.hd.window_size) );
+    struct sent_packet pp;
+    struct sent_packet *ddp;
+    create_window(&ddp, 3);
+    ddp[0].pt.hd.acknowledgment_number = 2312313;
+    ddp[1].pt.hd.acknowledgment_number = 34141;
+    ddp[2].pt.hd.acknowledgment_number = 442342;
+//    window_empty(&ddp, 3);
+//    printf("is_empty: %d", can_send_packet);
+
+    printf("\nsize of sent_packet: %lu\n", sizeof(pp));
+    printf("size of window: %lu\n", sizeof(ddp[2]));
+    printf("1 packet ack: %u", ddp[0].pt.hd.acknowledgment_number);
+    printf("2 packet ack: %u", ddp[1].pt.hd.acknowledgment_number);
+    printf("3 packet ack: %u\n", ddp[2].pt.hd.acknowledgment_number);
 
 
     sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -56,6 +66,6 @@ int main(int argc, char **argv)
 //        recvfrom(sd, &pt, sizeof(pt), 0, (struct sockaddr*)  &client_addr, (socklen_t *) sizeof(client_addr));
 //    }
 
-
+    free(ddp);
     return 0;
 }
