@@ -46,6 +46,14 @@ int main(int argc, char **argv)
             .args = &args
     };
 
+    int true = -12313123;
+    int false = 0;
+
+    if (false)
+    {
+        printf("This is true");
+    }
+
 //     struct sockaddr_in client_addr;
 //     struct sockaddr_in server_addr;
 //     server_addr.sin_family = AF_INET;

@@ -37,5 +37,6 @@ typedef struct sent_packet
 int create_window(struct sent_packet **window, uint8_t window_size);
 int window_empty(struct sent_packet *window);
 int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size);
+int first_unacked_ring_buffer(struct sent_packet *window, uint8_t window_size);
 
 #endif //CLIENT_PACKET_CONFIG_H
