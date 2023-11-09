@@ -24,21 +24,13 @@ int main(int argc, char **argv)
             .argv = argv,
             .args = &args
     };
-    printf("Size of packets: %zu \n", sizeof(packet));
-    printf("Size of header: %zu \n", sizeof(((packet *)0)->hd));
-    printf("Size of date: %zu \n", sizeof(((packet *)0)->data));
-    printf("Size of header: %zu \n", sizeof(header));
-    printf("Size of sequence_number: %zu \n", sizeof(((header*)0)->sequence_number));
-    printf("Size of acknowledgment_number: %zu \n", sizeof(((header*)0)->acknowledgment_number));
-    printf("Size of flags: %zu \n", sizeof(((header*)0)->flags));
-    printf("Size of window_size: %zu \n", sizeof(((header*)0)->window_size));
-    printf("Size of struct timeval: %zu \n", sizeof(((header*)0)->tv));
+
 
     struct sockaddr_in client_addr;
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(60000);
-    server_addr.sin_addr.s_addr = inet_addr("192.168.1.83");
+    server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
 
     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
 
