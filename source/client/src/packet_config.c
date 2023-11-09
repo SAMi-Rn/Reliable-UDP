@@ -8,10 +8,10 @@ int create_window(struct sent_packet **window, uint8_t window_size)
         return -1;
     }
 
-//    for (int i = 0; i < window_size; i++)
-//    {
-//        window[i] = malloc(sizeof(sent_packet));
-//    }
+    for (int i = 0; i < window_size; i++)
+    {
+        window[i]->has_been_acked = 1;
+    }
     first_empty_packet      = 0;
     first_unacked_packet    = 0;
     is_window_available     = 0;
@@ -61,6 +61,10 @@ int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size)
     }
 }
 
+int first_unacked_ring_buffer(struct sent_packet *window, uint8_t window_size)
+{
+
+}
 
 
 
