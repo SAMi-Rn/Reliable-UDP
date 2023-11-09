@@ -6,6 +6,10 @@
 #include <stdlib.h>
 #include <printf.h>
 
+uint8_t can_send_packet;
+uint8_t first_empty_packet;
+uint8_t front_of_window;
+
 typedef struct header
 {
     uint32_t        sequence_number;
@@ -26,8 +30,10 @@ typedef struct sent_packet
     struct packet   pt;
     uint32_t        expected_ack_number;
     struct timeval  sent_tv;
+    uint8_t         has_been_acked;
 } sent_packet;
 
-int create_window(uint8_t window_size, struct sent_packet **window);
+int create_window(struct sent_packet **window, uint8_t window_size);
+int window_empty(struct sent_packet **window, uint8_t window_size);
 
 #endif //CLIENT_PACKET_CONFIG_H

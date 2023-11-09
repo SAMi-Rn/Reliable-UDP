@@ -44,11 +44,12 @@ int main(int argc, char **argv)
         exit(EXIT_FAILURE);
     }
     struct packet pt;
+    struct sent_packet pp;
 
     printf("size packet: %lu\ndata: %lu\nheader: %lu", sizeof(pt), sizeof(pt.data), sizeof(pt.hd));
     printf("\nseq: %lu\nack: %lu", sizeof(pt.hd.sequence_number), sizeof(pt.hd.acknowledgment_number));
     printf("\ntv: %lu\nflags: %lu\nwindow: %lu", sizeof(pt.hd.tv), sizeof(pt.hd.flags),sizeof(pt.hd.window_size) );
-
+    printf("size of window: %lu\n", sizeof(pp));
 
     while (1)
     {
