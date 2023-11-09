@@ -12,8 +12,24 @@ set(SANITIZE TRUE)
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 set(INCLUDE_DIR ${PROJECT_SOURCE_DIR}/include)
 
-set(SOURCE_LIST ${SOURCE_DIR}/main.c)
-set(HEADER_LIST "")
+set(SOURCE_LIST ${SOURCE_DIR}/main.c
+        src/command_line.c
+        include/command_line.h
+        src/packet_config.c
+        include/packet_config.h
+        src/server_config.c
+        include/server_config.h
+        src/fsm.c
+        include/fsm.h)
+set(HEADER_LIST ""
+        src/command_line.c
+        include/command_line.h
+        src/packet_config.c
+        include/packet_config.h
+        src/server_config.c
+        include/server_config.h
+        src/fsm.c
+        include/fsm.h)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
