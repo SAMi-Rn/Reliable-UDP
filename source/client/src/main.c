@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     struct sockaddr_in client_addr;
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
-    server_addr.sin_port = htons(60000);
+    server_addr.sin_port = htons(50000);
     server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
 
     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
@@ -38,7 +38,7 @@ int main(int argc, char **argv)
 
     struct packet pt;
 
-    char temp[510] = "fjfksfjwe";
+    char temp[510] = "ack";
     strcpy(pt.data, temp);
     pt.hd.acknowledgment_number = 471264781;
     pt.hd.sequence_number = 28141084;
