@@ -18,7 +18,7 @@ typedef struct header
 typedef struct packet
 {
     struct header   hd;
-    char            data[501];
+    char            data[512];
 } packet;
 
 typedef struct sent_packet
