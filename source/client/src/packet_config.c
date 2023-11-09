@@ -32,7 +32,7 @@ int window_empty(struct sent_packet *window)
 
 int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size)
 {
-    if (window[first_empty_packet].has_been_acked == 0)
+    if (window[first_empty_packet].has_been_acked)
     {
         return 0;
     }
@@ -41,10 +41,24 @@ int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size)
     {
         if (window[0].has_been_acked)
         {
-
+            first_empty_packet = 0;
+            return 0;
         }
+
+        first_empty_packet = first_unacked_packet;
+        return -1;
     }
 
+    if (window[first_empty_packet + 1].has_been_acked)
+    {
+        first_empty_packet++;
+        return 0;
+    }
+    else
+    {
+        first_empty_packet = first_unacked_packet;
+        return -1;
+    }
 }
 
 
