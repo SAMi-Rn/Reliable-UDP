@@ -6,9 +6,10 @@
 #include <stdlib.h>
 #include <printf.h>
 
-uint8_t can_send_packet;
 uint8_t first_empty_packet;
-uint8_t front_of_window;
+uint8_t first_unacked_packet;
+uint8_t is_window_available;
+//uint8_t window_size;
 
 typedef struct header
 {
@@ -34,6 +35,7 @@ typedef struct sent_packet
 } sent_packet;
 
 int create_window(struct sent_packet **window, uint8_t window_size);
-int window_empty(struct sent_packet **window, uint8_t window_size);
+int window_empty(struct sent_packet *window);
+int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size);
 
 #endif //CLIENT_PACKET_CONFIG_H

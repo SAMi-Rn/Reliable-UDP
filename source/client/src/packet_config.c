@@ -8,24 +8,44 @@ int create_window(struct sent_packet **window, uint8_t window_size)
         return -1;
     }
 
+//    for (int i = 0; i < window_size; i++)
+//    {
+//        window[i] = malloc(sizeof(sent_packet));
+//    }
+    first_empty_packet      = 0;
+    first_unacked_packet    = 0;
+    is_window_available     = 0;
     return 0;
 }
 
-int window_empty(struct sent_packet **window, uint8_t window_size)
+int window_empty(struct sent_packet *window)
 {
-    for (int i = 0; i < window_size; i++)
+    if (window[first_empty_packet].has_been_acked == 0)
     {
-        if (window[i] != 0)
+        first_empty_packet = 0;
+        return 0;
+    }
+
+    first_empty_packet = 1;
+    return -1;
+}
+
+int first_packet_ring_buffer(struct sent_packet *window, uint8_t window_size)
+{
+    if (window[first_empty_packet].has_been_acked == 0)
+    {
+        return 0;
+    }
+
+    if (first_empty_packet + 1 >= window_size)
+    {
+        if (window[0].has_been_acked)
         {
-            can_send_packet = -1;
+
         }
     }
 
-    can_send_packet = 0;
-
-    return 0;
 }
-
 
 
 
