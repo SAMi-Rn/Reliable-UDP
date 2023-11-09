@@ -47,17 +47,20 @@ int main(int argc, char **argv)
 
     struct sent_packet pp;
     struct sent_packet *ddp;
-    create_window(&ddp, 3);
+    if (create_window(&ddp, 3) == -1)
+    {
+        perror("window sucks");
+    }
     ddp[0].pt.hd.acknowledgment_number = 2312313;
     ddp[1].pt.hd.acknowledgment_number = 34141;
-    ddp[2].pt.hd.acknowledgment_number = 442342;
-//    window_empty(&ddp, 3);
-//    printf("is_empty: %d", can_send_packet);
+    //ddp[2].pt.hd.acknowledgment_number = 442342;
+    int is_empty = window_empty(ddp, 3);
+    printf("is_empty: %d\n", is_empty);
 
     printf("\nsize of sent_packet: %lu\n", sizeof(pp));
     printf("size of window: %lu\n", sizeof(ddp[2]));
-    printf("1 packet ack: %u", ddp[0].pt.hd.acknowledgment_number);
-    printf("2 packet ack: %u", ddp[1].pt.hd.acknowledgment_number);
+    printf("1 packet ack: %u\n", ddp[0].pt.hd.acknowledgment_number);
+    printf("2 packet ack: %u\n", ddp[1].pt.hd.acknowledgment_number);
     printf("3 packet ack: %u\n", ddp[2].pt.hd.acknowledgment_number);
 
 

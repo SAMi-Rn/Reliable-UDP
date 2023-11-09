@@ -5,8 +5,11 @@
 #include <sys/time.h>
 #include <stdlib.h>
 #include <printf.h>
+#include <string.h>
 
-uint8_t can_send_packet;
+// In global.h or a similar header file
+ int can_send_packet;
+
 uint8_t first_empty_packet;
 uint8_t front_of_window;
 
@@ -34,6 +37,6 @@ typedef struct sent_packet
 } sent_packet;
 
 int create_window(struct sent_packet **window, uint8_t window_size);
-int window_empty(struct sent_packet **window, uint8_t window_size);
+int window_empty(struct sent_packet *window, uint8_t window_size);
 
 #endif //CLIENT_PACKET_CONFIG_H
