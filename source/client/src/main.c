@@ -46,6 +46,13 @@ int main(int argc, char **argv)
             .args = &args
     };
 
+//     struct sockaddr_in client_addr;
+//     struct sockaddr_in server_addr;
+//     server_addr.sin_family = AF_INET;
+//     server_addr.sin_port = htons(60000);
+//     server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
+
+//     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
 
     static struct client_fsm_transition transitions[] = {
             {FSM_INIT,               STATE_PARSE_ARGUMENTS,     parse_arguments_handler},
