@@ -88,10 +88,10 @@ int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address,
         return -1;
     }
 
-    for (int i = optind; i < argc; i++)
-    {
-        get_files(argv[i], glob_result, err);
-    }
+//    for (int i = optind; i < argc; i++)
+//    {
+//        get_files(argv[i], glob_result, err);
+//    }
 
     return 0;
 }

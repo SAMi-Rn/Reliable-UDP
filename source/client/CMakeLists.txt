@@ -18,14 +18,18 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         src/server_config.c
         include/server_config.h
         src/fsm.c
-        include/fsm.h)
+        include/fsm.h
+        src/packet_config.c
+        include/packet_config.h)
 set(HEADER_LIST ""
         src/command_line.c
         include/command_line.h
         src/server_config.c
         include/server_config.h
         src/fsm.c
-        include/fsm.h)
+        include/fsm.h
+        src/packet_config.c
+        include/packet_config.h)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
