@@ -14,26 +14,6 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
 
     return sockfd;
 }
-int read_keyboard(char * buffer){
-    {
-        char *line = NULL;  /* forces getline to allocate with malloc */
-        uint32_t len = 0;     /* ignored when line = NULL */
-        uint32_t read;
-
-        printf ("\nEnter string below [ctrl + d] to quit\n");
-
-       read = getline(&line, &len, stdin) != -1;
-
-       if (read < 0) {
-           return -1;
-       }
-        // append to buffer here
-
-        free (line);  /* free memory allocated by getline */
-
-        return 0;
-    }
-}
 
 //int socket_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err)
 //{
