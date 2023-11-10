@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "fsm.h"
 #include "packet_config.h"
 #include "server_config.h"
@@ -46,13 +45,6 @@ int main(int argc, char **argv)
             .args = &args
     };
 
-    int true = -12313123;
-    int false = 0;
-
-    if (false)
-    {
-        printf("This is true");
-    }
 
 //     struct sockaddr_in client_addr;
 //     struct sockaddr_in server_addr;
@@ -92,8 +84,8 @@ int main(int argc, char **argv)
 //
 //    char temp[510] = "fjfksfjwe";
 //    strcpy(pt.data, temp);
-//    pt.hd.acknowledgment_number = 471264781;
-//    pt.hd.sequence_number = 28141084;
+//    pt.hd.ack_number = 471264781;
+//    pt.hd.seq_number = 28141084;
 //    pt.hd.window_size = 10;
 //    pt.hd.flags = 2;
 //    gettimeofday(&pt.hd.tv, NULL);
@@ -107,15 +99,15 @@ int main(int argc, char **argv)
 //    }
 //    window_empty(ddp, 3);
 //    printf("is_empty: %d", can_send_packet);
-//    ddp[0].pt.hd.acknowledgment_number = 2312313;
-//    ddp[1].pt.hd.acknowledgment_number = 34141;
-//    ddp[2].pt.hd.acknowledgment_number = 442342;
+//    ddp[0].pt.hd.ack_number = 2312313;
+//    ddp[1].pt.hd.ack_number = 34141;
+//    ddp[2].pt.hd.ack_number = 442342;
 //    window_empty(&ddp, 3);
 //    printf("is_empty: %d", can_send_packet);
 
-//    printf("1 packet ack: %u", ddp[0].pt.hd.acknowledgment_number);
-//    printf("2 packet ack: %u", ddp[1].pt.hd.acknowledgment_number);
-//    printf("3 packet ack: %u\n", ddp[2].pt.hd.acknowledgment_number);
+//    printf("1 packet ack: %u", ddp[0].pt.hd.ack_number);
+//    printf("2 packet ack: %u", ddp[1].pt.hd.ack_number);
+//    printf("3 packet ack: %u\n", ddp[2].pt.hd.ack_number);
 
 
 //    sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -133,7 +125,10 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in parse arguments handler", "STATE_PARSE_ARGUMENTS");
-    if (parse_arguments(ctx -> argc, ctx -> argv, &ctx -> args -> glob_result, &ctx -> args -> address, &ctx -> args -> port_str, &ctx -> args -> window_size, err) != 0)
+    if (parse_arguments(ctx -> argc, ctx -> argv, &ctx -> args -> glob_result,
+                        &ctx -> args -> address, &ctx -> args -> port_str,
+                        &ctx -> args -> window_size, err) != 0)
+
     {
         return STATE_ERROR;
     }
@@ -191,6 +186,11 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     }
 
     printf("first: %u\nunacked: %u\n", first_empty_packet, first_unacked_packet);
+    first_packet_ring_buffer(context->args->window, context->args->window_size);
+    first_unacked_ring_buffer(context->args->window, context->args->window_size);
+    printf("first packet empty: %u\n", first_empty_packet);
+    printf("first packet unacked: %u\n", first_unacked_packet);
+
     return STATE_CLEANUP;
 }
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)

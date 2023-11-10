@@ -70,7 +70,8 @@ int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address,
                 }
 
                 char *endptr;
-                //w_flag++;
+                w_flag++;
+                // do in handle_arguments
                 window_size = (uint8_t *) strtoumax(optarg, &endptr, 10);
                 break;
             }
