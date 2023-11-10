@@ -31,7 +31,7 @@ typedef struct sent_packet
     struct packet   pt;
     uint32_t        expected_ack_number;
     struct timeval  sent_tv;
-    uint8_t         has_been_acked;
+    uint8_t         is_packet_empty;
 } sent_packet;
 
 int create_window(struct sent_packet **window, uint8_t window_size);
