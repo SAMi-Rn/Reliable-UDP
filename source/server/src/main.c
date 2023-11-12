@@ -31,9 +31,16 @@ int main(int argc, char **argv)
     struct sockaddr_in server_addr;
     server_addr.sin_family = AF_INET;
     server_addr.sin_port = htons(60000);
-    server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
+    server_addr.sin_addr.s_addr = inet_addr("192.168.1.80");
 
+    int enable;
     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
+    if(setsockopt(sd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int) ) == -1)
+    {
+//        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
 
     int bind_result;
     bind_result = bind(sd, (struct sockaddr*) &server_addr, sizeof(server_addr));
@@ -46,10 +53,10 @@ int main(int argc, char **argv)
     struct packet pt;
     struct sent_packet pp;
 
-    printf("size packet: %lu\ndata: %lu\nheader: %lu", sizeof(pt), sizeof(pt.data), sizeof(pt.hd));
-    printf("\nseq: %lu\nack: %lu", sizeof(pt.hd.sequence_number), sizeof(pt.hd.acknowledgment_number));
-    printf("\ntv: %lu\nflags: %lu\nwindow: %lu", sizeof(pt.hd.tv), sizeof(pt.hd.flags),sizeof(pt.hd.window_size) );
-    printf("size of window: %lu\n", sizeof(pp));
+//    printf("size packet: %lu\ndata: %lu\nheader: %lu", sizeof(pt), sizeof(pt.data), sizeof(pt.hd));
+//    printf("\nseq: %lu\nack: %lu", sizeof(pt.hd.sequence_number), sizeof(pt.hd.acknowledgment_number));
+//    printf("\ntv: %lu\nflags: %lu\nwindow: %lu", sizeof(pt.hd.tv), sizeof(pt.hd.flags),sizeof(pt.hd.window_size) );
+//    printf("size of window: %lu\n", sizeof(pp));
 
     while (1)
     {
@@ -59,12 +66,12 @@ int main(int argc, char **argv)
         if (result > 0)
         {
             printf("bytes: %u\n", result);
-            printf("seq number: %u\n", pt.hd.sequence_number);
-            printf("ack number: %u\n", pt.hd.acknowledgment_number);
+            printf("seq number: %u\n", pt.hd.seq_number);
+            printf("ack number: %u\n", pt.hd.ack_number);
             printf("window number: %u\n", pt.hd.window_size);
             printf("flags: %u\n", pt.hd.flags);
             printf("time: %ld\n", pt.hd.tv.tv_sec);
-            printf("time: %s\n", pt.data);
+            printf("data: %s\n\n\n\n", pt.data);
         }
     }
     return 0;
