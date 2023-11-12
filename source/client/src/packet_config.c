@@ -4,24 +4,23 @@
 int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
 {
     window_size = cmd_line_window_size;
-
     *window = (sent_packet*)malloc(sizeof(sent_packet) * window_size);
+
     if (window == NULL)
     {
         return -1;
     }
-    for (int i = 0; i < window_size; i++)
-    {
-        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
-    }
 
     for (int i = 0; i < window_size; i++)
     {
+        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
         window[i]->is_packet_empty = 0;
     }
+
     first_empty_packet      = 0;
     first_unacked_packet    = 0;
     is_window_available     = 1;
+
     return 0;
 }
 
@@ -30,11 +29,11 @@ int window_empty(struct sent_packet *window)
     if (window[first_empty_packet].is_packet_empty)
     {
         is_window_available = 1;
-        return 0;
+        return 1;
     }
 
     is_window_available = 0;
-    return -1;
+    return 0;
 }
 
 int first_packet_ring_buffer(struct sent_packet *window)
@@ -104,8 +103,10 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 {
     ssize_t result;
 
+    // make new function that populates the send_packet struct in the window
     gettimeofday(&pt->hd.tv, NULL);
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr, size_of_address(addr));
+    first_packet_ring_buffer(window);
     if (result < 0)
     {
         printf("error: %d\n", errno);
