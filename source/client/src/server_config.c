@@ -14,9 +14,6 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
 
     return sockfd;
 }
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 
 int read_keyboard(char *buffer, uint32_t buffer_size) {
     char *line = NULL;

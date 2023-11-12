@@ -151,7 +151,8 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in handle arguments", "STATE_HANDLE_ARGUMENTS");
-    if (handle_arguments(ctx -> argv[0], ctx -> args -> address, ctx -> args -> port_str, &ctx -> args -> port, err) != 0)
+    if (handle_arguments(ctx -> argv[0], ctx -> args -> address,
+                         ctx -> args -> port_str, &ctx -> args -> port, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -195,12 +196,6 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     {
         return STATE_ERROR;
     }
-
-    printf("first: %u\nunacked: %u\n", first_empty_packet, first_unacked_packet);
-    first_packet_ring_buffer(context->args->window, context->args->window_size);
-    first_unacked_ring_buffer(context->args->window, context->args->window_size);
-    printf("first packet empty: %u\n", first_empty_packet);
-    printf("first packet unacked: %u\n", first_unacked_packet);
 
     return STATE_CONNECT_SOCKET;
 }
