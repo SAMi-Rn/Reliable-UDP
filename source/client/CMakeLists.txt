@@ -20,7 +20,9 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         src/fsm.c
         include/fsm.h
         src/packet_config.c
-        include/packet_config.h)
+        include/packet_config.h
+        src/protocol.c
+        include/protocol.h)
 set(HEADER_LIST ""
         src/command_line.c
         include/command_line.h
@@ -29,7 +31,9 @@ set(HEADER_LIST ""
         src/fsm.c
         include/fsm.h
         src/packet_config.c
-        include/packet_config.h)
+        include/packet_config.h
+        src/protocol.c
+        include/protocol.h)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)

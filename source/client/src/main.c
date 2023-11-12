@@ -1,5 +1,5 @@
 #include "fsm.h"
-#include "packet_config.h"
+#include "protocol.h"
 #include "server_config.h"
 #include "command_line.h"
 
@@ -10,6 +10,7 @@ enum application_states
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
     STATE_CREATE_WINDOW,
+    STATE_CONNECT_SOCKET,
     STATE_CLEANUP,
     STATE_ERROR
 };
@@ -19,6 +20,7 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
+static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
@@ -60,7 +62,8 @@ int main(int argc, char **argv)
             {STATE_HANDLE_ARGUMENTS, STATE_CONVERT_ADDRESS,     convert_address_handler},
             {STATE_CONVERT_ADDRESS,  STATE_CREATE_SOCKET,       create_socket_handler},
             {STATE_CREATE_SOCKET,    STATE_CREATE_WINDOW,       create_window_handler},
-            {STATE_CREATE_WINDOW,    STATE_CLEANUP,             cleanup_handler},
+            {STATE_CREATE_WINDOW,    STATE_CONNECT_SOCKET,      connect_socket_handler},
+            {STATE_CONNECT_SOCKET,   STATE_CLEANUP,             cleanup_handler},
             {STATE_ERROR,            STATE_CLEANUP,             cleanup_handler},
             {STATE_PARSE_ARGUMENTS,  STATE_ERROR,               error_handler},
             {STATE_HANDLE_ARGUMENTS, STATE_ERROR,               error_handler},
@@ -75,19 +78,18 @@ int main(int argc, char **argv)
 //    struct sockaddr_in server_addr;
 //    server_addr.sin_family = AF_INET;
 //    server_addr.sin_port = htons(60000);
-//    server_addr.sin_addr.s_addr = inet_addr("192.168.1.83");
+//    server_addr.sin_addr.s_addr = inet_addr("192.168.1.80");
 //
 //    int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
 //
-//
 //    struct packet pt;
 //
-//    char temp[510] = "fjfksfjwe";
+//    char temp[510] = "this is sami";
 //    strcpy(pt.data, temp);
-//    pt.hd.ack_number = 471264781;
-//    pt.hd.seq_number = 28141084;
+//    pt.hd.ack_number = 100;
+//    pt.hd.seq_number = 1;
 //    pt.hd.window_size = 10;
-//    pt.hd.flags = 2;
+//    pt.hd.flags = 1;
 //    gettimeofday(&pt.hd.tv, NULL);
 //
 //    struct sent_packet pp;
@@ -108,9 +110,18 @@ int main(int argc, char **argv)
 //    printf("1 packet ack: %u", ddp[0].pt.hd.ack_number);
 //    printf("2 packet ack: %u", ddp[1].pt.hd.ack_number);
 //    printf("3 packet ack: %u\n", ddp[2].pt.hd.ack_number);
-
-
-//    sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
+//
+//
+//    ssize_t result;
+//
+//    result = sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
+//
+//    printf("sent: %zd", result);
+//    if (result < 0)
+//    {
+//        printf(strerror(errno));
+//
+//    }
 //    while (1)
 //    {
 //        recvfrom(sd, &pt, sizeof(pt), 0, (struct sockaddr*)  &client_addr, (socklen_t *) sizeof(client_addr));
@@ -191,8 +202,22 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     printf("first packet empty: %u\n", first_empty_packet);
     printf("first packet unacked: %u\n", first_unacked_packet);
 
+    return STATE_CONNECT_SOCKET;
+}
+
+static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> addr, ctx -> args -> port, ctx -> args -> window))
+    {
+        return STATE_ERROR;
+    }
+
     return STATE_CLEANUP;
 }
+
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
