@@ -14,6 +14,7 @@ enum application_states
     STATE_CREATE_WINDOW,
     STATE_CREATE_RECV_THREAD,
     STATE_CONNECT_SOCKET,
+    STATE_SEND_MESSAGE,
     STATE_CLEANUP,
     STATE_ERROR
 };
@@ -26,6 +27,7 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
 static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err);
+static int send_message_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
@@ -69,7 +71,8 @@ int main(int argc, char **argv)
             {STATE_BIND_SOCKET,      STATE_CREATE_WINDOW,       create_window_handler},
             {STATE_CREATE_WINDOW,    STATE_CREATE_RECV_THREAD,      create_recv_thread_handler},
             {STATE_CREATE_RECV_THREAD,    STATE_CONNECT_SOCKET,      connect_socket_handler},
-            {STATE_CONNECT_SOCKET,    STATE_CLEANUP,      cleanup_handler},
+            {STATE_CONNECT_SOCKET,    STATE_SEND_MESSAGE,      send_message_handler},
+            {STATE_SEND_MESSAGE,    STATE_CLEANUP,      cleanup_handler},
             {STATE_ERROR,            STATE_CLEANUP,             cleanup_handler},
             {STATE_PARSE_ARGUMENTS,  STATE_ERROR,               error_handler},
             {STATE_HANDLE_ARGUMENTS, STATE_ERROR,               error_handler},
@@ -77,6 +80,9 @@ int main(int argc, char **argv)
             {STATE_CREATE_SOCKET,    STATE_ERROR,              error_handler},
             {STATE_BIND_SOCKET,      STATE_ERROR,              error_handler},
             {STATE_CREATE_WINDOW,    STATE_ERROR,               error_handler},
+            {STATE_CREATE_RECV_THREAD,    STATE_ERROR,               error_handler},
+            {STATE_CONNECT_SOCKET,    STATE_ERROR,               error_handler},
+            {STATE_SEND_MESSAGE,    STATE_ERROR,               error_handler},
             {STATE_CLEANUP,          FSM_EXIT,                  NULL},
     };
     fsm_run(&context, &err, 0, 0 , transitions);
@@ -174,6 +180,11 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
         return STATE_ERROR;
     }
 
+    for (int i = 0; i < 5; i++)
+    {
+        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_empty);
+    }
+
     return STATE_CREATE_RECV_THREAD;
 }
 
@@ -201,6 +212,27 @@ static int connect_socket_handler(struct fsm_context *context, struct fsm_error 
     {
         return STATE_ERROR;
     }
+
+    return STATE_SEND_MESSAGE;
+}
+
+static int send_message_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    while (!exit_flag)
+    {
+        char *buffer = NULL;
+
+        read_keyboard(&buffer, 500);
+        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                         ctx -> args -> window, buffer);
+    }
+//    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> port, ctx -> args -> window))
+//    {
+//        return STATE_ERROR;
+//    }
 
     return STATE_CLEANUP;
 }
