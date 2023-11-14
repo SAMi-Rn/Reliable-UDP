@@ -15,31 +15,38 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
     return sockfd;
 }
 
-int read_keyboard(char *buffer, uint32_t buffer_size) {
+int read_keyboard(char **buffer, uint32_t buffer_size) {
     char *line = NULL;
     size_t len = 0;
     ssize_t read;
 
+    read = 0;
     printf("\nEnter string below [ctrl + d] to quit\n");
-
-    read = getline(&line, &len, stdin);
-
-    if (read == -1) {
-        free(line);
-        return -1;
+    while (read <= 0)
+    {
+        read = getline(&line, &len, stdin);
     }
 
-    uint32_t size = buffer_size - strlen(buffer) - 1;
+//    if (read == -1) {
+//        free(line);
+//        return -1;
+//    }
 
-    if ((size_t)read > size) {
-        free(line);
-        return -1;
-    }
+    printf("read: %s\nsize: %zd", line, strlen(line));
+    *buffer = (char *) malloc(strlen(line));
+    strcpy(*buffer, line);
 
-    strncat(buffer, line, read - 1);
+//    uint32_t size = buffer_size - strlen(*buffer) - 1;
 
-    free(line);
-    buffer[buffer_size - 1] = '\0';
+//    if ((size_t)read > size) {
+//        free(line);
+//        return -1;
+//    }
+//
+//    strncat(*buffer, line, read - 1);
+//
+//    free(line);
+//    *buffer[buffer_size - 1] = '\0';
 
     return 0;
 }
@@ -133,7 +140,7 @@ int socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struc
     void     *vaddr;
     in_port_t net_port;
 
-    net_port = htons(60001);
+    net_port = htons(60000);
 
     if(addr->ss_family == AF_INET)
     {

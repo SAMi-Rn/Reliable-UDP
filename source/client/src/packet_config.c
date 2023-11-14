@@ -14,7 +14,12 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
     for (int i = 0; i < window_size; i++)
     {
         window[i] = (sent_packet*)malloc(sizeof(sent_packet));
-        window[i]->is_packet_empty = 1;
+        window[i] -> is_packet_empty = 1;
+    }
+
+    for (int i = 0; i < 5; i++)
+    {
+        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_empty);
     }
 
     first_empty_packet      = 0;
@@ -38,6 +43,10 @@ int window_empty(struct sent_packet *window)
 
 int first_packet_ring_buffer(struct sent_packet *window)
 {
+    for (int i = 0; i < 5; i++)
+    {
+        printf("%d: %d\n", i, window[i].is_packet_empty);
+    }
     if (window[first_empty_packet].is_packet_empty)
     {
         return 1;
@@ -55,7 +64,7 @@ int first_packet_ring_buffer(struct sent_packet *window)
         return 0;
     }
 
-    if (window[first_empty_packet + 1].is_packet_empty)
+    if (window[first_empty_packet + 1].is_packet_empty == 1)
     {
         first_empty_packet++;
         return 1;
@@ -104,10 +113,23 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 {
     ssize_t result;
 
+    for (int i = 0; i < 5; i++)
+    {
+        printf("%d: %d\n", i, window[i].is_packet_empty);
+    }
+    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     add_packet_to_window(window, pt);
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
+    printf("\n\nSENDING:\n");
+    printf("bytes: %zd\n", result);
+    printf("seq number: %u\n", pt->hd.seq_number);
+    printf("ack number: %u\n", pt->hd.ack_number);
+    printf("window number: %u\n", pt->hd.window_size);
+    printf("flags: %u\n", pt->hd.flags);
+    printf("time: %ld\n", pt->hd.tv.tv_sec);
+    printf("data: %s\n\n\n\n", pt->data);
     if (result < 0)
     {
         printf("error: %d\n", errno);
@@ -145,6 +167,7 @@ int receive_packet(int sockfd, struct sockaddr_storage *server_addr, struct sent
         return -1;
     }
 
+    printf("\n\nRECEIVED:\n");
     printf("bytes: %zd\n", result);
     printf("seq number: %u\n", pt.hd.seq_number);
     printf("ack number: %u\n", pt.hd.ack_number);

@@ -22,11 +22,12 @@ enum flags
 
 enum next_state_for_packet
 {
-    SENDACK,
+    SEND_HANDSHAKE_ACK,
+    SEND_ACK,
     ESTABLISH_HANDSHAKE,
-    RECVACK,
+    RECV_ACK,
     END_CONNECTION,
-    RECVRST,
+    RECV_RST,
     UNKNOWN_FLAG
 };
 
@@ -36,6 +37,8 @@ int                 protocol_connect(int sockfd, struct sockaddr_storage *addr, 
 int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window);
 int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
 int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
+int                 send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
+int                 send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data);
 int                 send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
 int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
 int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
