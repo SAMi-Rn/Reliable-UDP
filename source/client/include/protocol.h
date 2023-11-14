@@ -31,6 +31,7 @@ enum next_state_for_packet
 };
 
 int                 read_flags(uint8_t flags);
+int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
 int                 protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window);
 int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window);
 int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);

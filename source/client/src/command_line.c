@@ -8,35 +8,53 @@
 #include <inttypes.h>
 #include "command_line.h"
 
-int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address, char **port_str, uint8_t *window_size, struct fsm_error *err)
+int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **server_addr, char **client_addr, char **port_str, uint8_t *window_size, struct fsm_error *err)
 {
     int opt;
-    bool i_flag, p_flag, w_flag;
+    bool c_flag, s_flag, p_flag, w_flag;
 
     opterr = 0;
-    i_flag = 0;
+    c_flag = 0;
+    s_flag = 0;
     p_flag = 0;
     w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "i:p:w:h")) != -1)
+    while ((opt = getopt(argc, argv, "c:s:p:w:h")) != -1)
     {
         switch (opt)
         {
-            case 'i':
+            case 'c':
             {
-                if (i_flag)
+                if (c_flag)
                 {
                     char message[40];
 
-                    snprintf(message, sizeof(message), "option '-i' can only be passed in once.");
+                    snprintf(message, sizeof(message), "option '-c' can only be passed in once.");
                     usage(argv[0]);
                     SET_ERROR(err, message);
 
                     return -1;
                 }
 
-                i_flag++;
-                *address = optarg;
+                c_flag++;
+                *client_addr = optarg;
+                break;
+            }
+            case 's':
+            {
+                if (s_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-s' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                s_flag++;
+                *server_addr = optarg;
                 break;
             }
             case 'p':
@@ -122,7 +140,8 @@ void usage(const char *program_name)
     fprintf(stderr, "Usage: %s [-i] <value> [-p] <value> [-h] <value>\n", program_name);
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
-    fputs("  -i <value>             Option 'i' (required) with value, Sets the IP address\n", stderr);
+    fputs("  -c <value>             Option 'c' (required) with value, Sets the IP client_addr\n", stderr);
+    fputs("  -s <value>             Option 's' (required) with value, Sets the IP server_addr\n", stderr);
     fputs("  -p <value>             Option 'p' (required) with value, Sets the Port\n", stderr);
 }
 
@@ -149,11 +168,19 @@ void usage(const char *program_name)
 //    }
 //}
 
-int handle_arguments(const char *binary_name, const char *address, const char *port_str, in_port_t *port, struct fsm_error *err)
+int handle_arguments(const char *binary_name, const char *server_addr, const char *client_addr, const char *port_str, in_port_t *port, struct fsm_error *err)
 {
-    if(address == NULL)
+    if(client_addr == NULL)
     {
-        SET_ERROR(err, "The address is required.");
+        SET_ERROR(err, "The client_addr is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_addr == NULL)
+    {
+        SET_ERROR(err, "The server_addr is required.");
         usage(binary_name);
 
         return -1;
