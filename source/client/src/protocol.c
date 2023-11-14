@@ -20,7 +20,7 @@ int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, 
         ipv4_addr = (struct sockaddr_in *)addr;
         ipv4_addr->sin_port = net_port;
         send_syn_packet(sockfd, addr, window);
-//        if(connect(sockfd, (struct sockaddr *)addr, sizeof(struct sockaddr_in)) == -1)
+//        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in)) == -1)
 //        {
 ////            SET_ERROR(err, strerror(errno));
 //            return -1;
@@ -32,7 +32,7 @@ int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, 
         ipv6_addr = (struct sockaddr_in6 *)addr;
         ipv6_addr->sin6_port = net_port;
         send_syn_packet(sockfd, addr, window);
-//        if(connect(sockfd, (struct sockaddr *)addr, sizeof(struct sockaddr_in6)) == -1)
+//        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in6)) == -1)
 //        {
 ////            SET_ERROR(err, strerror(errno));
 //            return -1;
@@ -48,7 +48,7 @@ int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, 
     return 0;
 }
 
-int receive_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
 {
     int result;
 

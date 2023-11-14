@@ -80,9 +80,9 @@ add_compile_options("-Wall"
         "-Wwrite-strings")
 
 #if (${SANITIZE})
-#    add_compile_options("-fsanitize=address")
+#    add_compile_options("-fsanitize=server_addr")
 #    add_compile_options("-fsanitize=undefined")
-#    add_compile_options("-fsanitize-address-use-after-scope")
+#    add_compile_options("-fsanitize-server_addr-use-after-scope")
 #    add_compile_options("-fstack-protector-all")
 #    add_compile_options("-fdelete-null-pointer-checks")
 #    add_compile_options("-fno-omit-frame-pointer")
@@ -91,7 +91,7 @@ add_compile_options("-Wall"
 #        add_compile_options("-fsanitize=leak")
 #    endif ()
 #
-#    add_link_options("-fsanitize=address")
+#    add_link_options("-fsanitize=server_addr")
 #    add_link_options("-fsanitize=bounds")
 #endif ()
 
