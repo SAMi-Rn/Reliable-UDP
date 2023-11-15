@@ -182,7 +182,7 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
 
     for (int i = 0; i < 5; i++)
     {
-        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_empty);
+        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
     }
 
     return STATE_CREATE_RECV_THREAD;
