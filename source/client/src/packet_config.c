@@ -126,7 +126,7 @@ int receive_packet(int sockfd, struct sockaddr_storage addr, struct sent_packet 
         }
         case SENDACK:
         {
-            send_ack_packet(sockfd, addr, window, pt);
+            recv_ack_packet(sockfd, addr, window, pt);
             break;
         }
         case RECVACK:
@@ -140,17 +140,12 @@ int receive_packet(int sockfd, struct sockaddr_storage addr, struct sent_packet 
             break;
         }
         case RECVRST:
-        {
-            return -1;
-        }
         case UNKNOWN_FLAG:
-        {
-            return -1;
-        }
         default:
         {
             return -1;
         }
+
     }
 
     return 0;
