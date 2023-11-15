@@ -1,7 +1,8 @@
 #include "fsm.h"
-#include "packet_config.h"
+#include "protocol.h"
 #include "server_config.h"
 #include "command_line.h"
+#include <pthread.h>
 
 enum application_states
 {
@@ -9,7 +10,11 @@ enum application_states
     STATE_HANDLE_ARGUMENTS,
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
+    STATE_BIND_SOCKET,
     STATE_CREATE_WINDOW,
+    STATE_CREATE_RECV_THREAD,
+    STATE_CONNECT_SOCKET,
+    STATE_SEND_MESSAGE,
     STATE_CLEANUP,
     STATE_ERROR
 };
@@ -18,19 +23,31 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
 static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
+static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err);
+static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err);
+static int send_message_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
+
+static void                     sigint_handler(int signum);
+static int                      setup_signal_handler(struct fsm_error *err);
+
+static volatile sig_atomic_t exit_flag = 0;
+
+void *init_recv_fucntion(void *ptr);
 
 typedef struct arguments
 {
     int                     sockfd;
     uint8_t                 window_size;
-    char                    *address, *port_str;
+    char                    *server_addr, *client_addr, *port_str;
     in_port_t               port;
-    struct sockaddr_storage addr;
+    struct sockaddr_storage server_addr_struct, client_addr_struct;
     glob_t                  glob_result;
     struct sent_packet      *window;
+    pthread_t               recv_thread;
 } arguments;
 
 
@@ -45,78 +62,36 @@ int main(int argc, char **argv)
             .args = &args
     };
 
-
-//     struct sockaddr_in client_addr;
-//     struct sockaddr_in server_addr;
-//     server_addr.sin_family = AF_INET;
-//     server_addr.sin_port = htons(60000);
-//     server_addr.sin_addr.s_addr = inet_addr("10.0.0.116");
-
-//     int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
-
     static struct client_fsm_transition transitions[] = {
             {FSM_INIT,               STATE_PARSE_ARGUMENTS,     parse_arguments_handler},
             {STATE_PARSE_ARGUMENTS,  STATE_HANDLE_ARGUMENTS,    handle_arguments_handler},
             {STATE_HANDLE_ARGUMENTS, STATE_CONVERT_ADDRESS,     convert_address_handler},
             {STATE_CONVERT_ADDRESS,  STATE_CREATE_SOCKET,       create_socket_handler},
-            {STATE_CREATE_SOCKET,    STATE_CREATE_WINDOW,       create_window_handler},
-            {STATE_CREATE_WINDOW,    STATE_CLEANUP,             cleanup_handler},
+            {STATE_CREATE_SOCKET,    STATE_BIND_SOCKET,         bind_socket_handler},
+            {STATE_BIND_SOCKET,      STATE_CREATE_WINDOW,       create_window_handler},
+            {STATE_CREATE_WINDOW,    STATE_CREATE_RECV_THREAD,      create_recv_thread_handler},
+            {STATE_CREATE_RECV_THREAD,    STATE_CONNECT_SOCKET,      connect_socket_handler},
+            {STATE_CONNECT_SOCKET,    STATE_SEND_MESSAGE,      send_message_handler},
+            {STATE_SEND_MESSAGE,    STATE_CLEANUP,      cleanup_handler},
             {STATE_ERROR,            STATE_CLEANUP,             cleanup_handler},
             {STATE_PARSE_ARGUMENTS,  STATE_ERROR,               error_handler},
             {STATE_HANDLE_ARGUMENTS, STATE_ERROR,               error_handler},
             {STATE_CONVERT_ADDRESS,  STATE_ERROR,               error_handler},
-            {STATE_CREATE_SOCKET,    STATE_ERROR,              create_window_handler},
-            {STATE_CREATE_SOCKET,    STATE_ERROR,               error_handler},
+            {STATE_CREATE_SOCKET,    STATE_ERROR,              error_handler},
+            {STATE_BIND_SOCKET,      STATE_ERROR,              error_handler},
+            {STATE_CREATE_WINDOW,    STATE_ERROR,               error_handler},
+            {STATE_CREATE_RECV_THREAD,    STATE_ERROR,               error_handler},
+            {STATE_CONNECT_SOCKET,    STATE_ERROR,               error_handler},
+            {STATE_SEND_MESSAGE,    STATE_ERROR,               error_handler},
             {STATE_CLEANUP,          FSM_EXIT,                  NULL},
     };
     fsm_run(&context, &err, 0, 0 , transitions);
 
-//    struct sockaddr_in client_addr;
-//    struct sockaddr_in server_addr;
-//    server_addr.sin_family = AF_INET;
-//    server_addr.sin_port = htons(60000);
-//    server_addr.sin_addr.s_addr = inet_addr("192.168.1.83");
-//
-//    int sd = socket_create(AF_INET, SOCK_DGRAM, 0, &err);
-//
-//
-//    struct packet pt;
-//
-//    char temp[510] = "fjfksfjwe";
-//    strcpy(pt.data, temp);
-//    pt.hd.ack_number = 471264781;
-//    pt.hd.seq_number = 28141084;
-//    pt.hd.window_size = 10;
-//    pt.hd.flags = 2;
-//    gettimeofday(&pt.hd.tv, NULL);
-//
-//    struct sent_packet pp;
-//    struct sent_packet *ddp;
-//    if (create_window(&ddp, 3) != 0)
-//    {
-//        printf("error");
-//        exit(EXIT_FAILURE);
-//    }
-//    window_empty(ddp, 3);
-//    printf("is_empty: %d", can_send_packet);
-//    ddp[0].pt.hd.ack_number = 2312313;
-//    ddp[1].pt.hd.ack_number = 34141;
-//    ddp[2].pt.hd.ack_number = 442342;
-//    window_empty(&ddp, 3);
-//    printf("is_empty: %d", can_send_packet);
 
-//    printf("1 packet ack: %u", ddp[0].pt.hd.ack_number);
-//    printf("2 packet ack: %u", ddp[1].pt.hd.ack_number);
-//    printf("3 packet ack: %u\n", ddp[2].pt.hd.ack_number);
+//    result = sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
 
-
-//    sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
-//    while (1)
-//    {
 //        recvfrom(sd, &pt, sizeof(pt), 0, (struct sockaddr*)  &client_addr, (socklen_t *) sizeof(client_addr));
-//    }
 
-//    free(ddp);
     return 0;
 }
 
@@ -126,8 +101,8 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
     ctx = context;
     SET_TRACE(context, "in parse arguments handler", "STATE_PARSE_ARGUMENTS");
     if (parse_arguments(ctx -> argc, ctx -> argv, &ctx -> args -> glob_result,
-                        &ctx -> args -> address, &ctx -> args -> port_str,
-                        &ctx -> args -> window_size, err) != 0)
+                        &ctx -> args -> server_addr, &ctx -> args -> client_addr,
+                        &ctx -> args -> port_str, &ctx -> args -> window_size, err) != 0)
 
     {
         return STATE_ERROR;
@@ -140,7 +115,9 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in handle arguments", "STATE_HANDLE_ARGUMENTS");
-    if (handle_arguments(ctx -> argv[0], ctx -> args -> address, ctx -> args -> port_str, &ctx -> args -> port, err) != 0)
+    if (handle_arguments(ctx -> argv[0], ctx -> args -> server_addr,
+                         ctx -> args -> client_addr, ctx -> args -> port_str,
+                         &ctx -> args -> port, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -152,8 +129,13 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
 {
     struct fsm_context *ctx;
     ctx = context;
-    SET_TRACE(context, "in convert address", "STATE_CONVERT_ADDRESS");
-    if (convert_address(ctx -> args -> address, &ctx -> args -> addr, err) != 0)
+    SET_TRACE(context, "in convert server_addr", "STATE_CONVERT_ADDRESS");
+    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, err) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -166,8 +148,21 @@ static int create_socket_handler(struct fsm_context *context, struct fsm_error *
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in create socket", "STATE_CREATE_SOCKET");
-    ctx -> args -> sockfd = socket_create(ctx -> args -> addr.ss_family, SOCK_DGRAM, 0, err);
+    ctx -> args -> sockfd = socket_create(ctx -> args -> client_addr_struct.ss_family, SOCK_DGRAM, 0, err);
     if (ctx -> args -> sockfd == -1)
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_BIND_SOCKET;
+}
+
+static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in bind socket", "STATE_BIND_SOCKET");
+    if (socket_bind(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct, ctx -> args -> port, err))
     {
         return STATE_ERROR;
     }
@@ -185,19 +180,69 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
         return STATE_ERROR;
     }
 
-    printf("first: %u\nunacked: %u\n", first_empty_packet, first_unacked_packet);
-    first_packet_ring_buffer(context->args->window, context->args->window_size);
-    first_unacked_ring_buffer(context->args->window, context->args->window_size);
-    printf("first packet empty: %u\n", first_empty_packet);
-    printf("first packet unacked: %u\n", first_unacked_packet);
+    for (int i = 0; i < 5; i++)
+    {
+        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
+    }
+
+    return STATE_CREATE_RECV_THREAD;
+}
+
+static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context      *ctx;
+    int                     result;
+    ctx = context;
+    SET_TRACE(context, "in create receive thread", "STATE_CREATE_RECV_THREAD");
+    result = pthread_create(&ctx -> args -> recv_thread, NULL, init_recv_fucntion, (void *) ctx);
+    if (result < 0)
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_CONNECT_SOCKET;
+}
+
+static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> port, ctx -> args -> window))
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_SEND_MESSAGE;
+}
+
+static int send_message_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    while (!exit_flag)
+    {
+        char *buffer = NULL;
+
+        read_keyboard(&buffer, 500);
+        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                         ctx -> args -> window, buffer);
+    }
+//    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> port, ctx -> args -> window))
+//    {
+//        return STATE_ERROR;
+//    }
 
     return STATE_CLEANUP;
 }
+
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
+    pthread_join(ctx -> args -> recv_thread, NULL);
     if (socket_close(ctx -> args -> sockfd, err))
     {
         printf("close socket error");
@@ -219,3 +264,17 @@ static int error_handler(struct fsm_context *context, struct fsm_error *err)
 
     return STATE_CLEANUP;
 }
+
+void *init_recv_fucntion(void *ptr)
+{
+    struct fsm_context *ctx = (struct fsm_context*) ptr;
+
+    while (!exit_flag)
+    {
+        printf("thread that reads packets\n");
+        receive_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> window);
+    }
+
+    return NULL;
+}
+
