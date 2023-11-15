@@ -14,26 +14,26 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
     for (int i = 0; i < window_size; i++)
     {
         window[i] = (sent_packet*)malloc(sizeof(sent_packet));
-        window[i] -> is_packet_empty = 1;
+//        window[i] -> is_packet_full = 1;
     }
 
     for (int i = 0; i < 5; i++)
     {
-        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_empty);
+        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_full);
     }
 
     first_empty_packet      = 0;
     first_unacked_packet    = 0;
-    is_window_available     = 1;
+    is_window_available     = TRUE;
 
     return 0;
 }
 
 int window_empty(struct sent_packet *window)
 {
-    if (window[first_empty_packet].is_packet_empty)
+    if (!window[first_empty_packet].is_packet_full)
     {
-        is_window_available = 1;
+        is_window_available = TRUE;
         return 1;
     }
 
@@ -45,16 +45,16 @@ int first_packet_ring_buffer(struct sent_packet *window)
 {
     for (int i = 0; i < 5; i++)
     {
-        printf("%d: %d\n", i, window[i].is_packet_empty);
+        printf("%d: %d\n", i, window[i].is_packet_full);
     }
-    if (window[first_empty_packet].is_packet_empty)
+    if (!window[first_empty_packet].is_packet_full)
     {
         return 1;
     }
 
     if (first_empty_packet + 1 >= window_size)
     {
-        if (window[0].is_packet_empty)
+        if (!window[0].is_packet_full)
         {
             first_empty_packet = 0;
             return 1;
@@ -64,7 +64,7 @@ int first_packet_ring_buffer(struct sent_packet *window)
         return 0;
     }
 
-    if (window[first_empty_packet + 1].is_packet_empty == 1)
+    if (!window[first_empty_packet + 1].is_packet_full)
     {
         first_empty_packet++;
         return 1;
@@ -78,14 +78,14 @@ int first_packet_ring_buffer(struct sent_packet *window)
 
 int first_unacked_ring_buffer(struct sent_packet *window)
 {
-    if (!window[first_unacked_packet].is_packet_empty)
+    if (window[first_unacked_packet].is_packet_full)
     {
         return 1;
     }
 
     if (first_unacked_packet + 1 >= window_size)
     {
-        if (!window[0].is_packet_empty)
+        if (window[0].is_packet_full)
         {
             first_unacked_packet = 0;
             return 1;
@@ -95,7 +95,7 @@ int first_unacked_ring_buffer(struct sent_packet *window)
         return 0;
     }
 
-    if (!window[first_unacked_packet + 1].is_packet_empty)
+    if (window[first_unacked_packet + 1].is_packet_full)
     {
         first_unacked_packet++;
         return 1;
@@ -115,7 +115,7 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 
     for (int i = 0; i < 5; i++)
     {
-        printf("%d: %d\n", i, window[i].is_packet_empty);
+        printf("%d: %d\n", i, window[i].is_packet_full);
     }
     printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     add_packet_to_window(window, pt);
@@ -143,9 +143,20 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
 {
     gettimeofday(&pt->hd.tv, NULL);
     window[first_empty_packet].pt                       = *pt;
-    window[first_empty_packet].is_packet_empty          = 0;
-    window[first_empty_packet].expected_ack_number      = pt->hd.seq_number +
-                                                            strlen(pt->data);
+    window[first_empty_packet].is_packet_full           = TRUE;
+    if (pt->hd.flags == SYN)
+    {
+        window[first_empty_packet].expected_ack_number      = 1;
+    }
+    else if (pt->hd.flags == SYNACK)
+    {
+        window[first_empty_packet].expected_ack_number = pt -> hd.seq_number + 1;
+    }
+    else
+    {
+        window[first_empty_packet].expected_ack_number = pt->hd.seq_number +
+                                                         strlen(pt->data);
+    }
     first_packet_ring_buffer(window);
     window_empty(window);
 
@@ -185,9 +196,10 @@ int receive_packet(int sockfd, struct sockaddr_storage *server_addr, struct sent
 
 int remove_packet_from_window(struct sent_packet *window, struct packet *pt)
 {
+    printf("expected: %u received: %u", window[first_unacked_packet].expected_ack_number, pt->hd.ack_number);
     if (window[first_unacked_packet].expected_ack_number == pt->hd.ack_number)
     {
-        window[first_unacked_packet].is_packet_empty = 1;
+        window[first_unacked_packet].is_packet_full = FALSE;
         first_unacked_ring_buffer(window);
 
         return 1;
@@ -260,7 +272,7 @@ int add_connection(struct sockaddr_storage *addr)
         return -1;
     }
 
-    temp[(sizeof(temp)/ sizeof(struct sockaddr_storage)) - 1] = *addr;
+    temp[(sizeof(temp)/ sizeof(struct sockaddr_storage))] = *addr;
     list_of_connections = temp;
 
     return 0;

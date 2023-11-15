@@ -43,6 +43,7 @@ int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, 
 //        SET_ERROR(err, "Address family not supported");
         return -1;
     }
+
     printf("Connected to: %s:%u\n", addr_str, port);
 
     return 0;
@@ -54,6 +55,7 @@ int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
 
     result = read_flags(pt->hd.flags);
 
+    remove_packet_from_window(window, pt);
     switch (result)
     {
         case ESTABLISH_HANDSHAKE:

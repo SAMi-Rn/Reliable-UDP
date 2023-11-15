@@ -6,6 +6,12 @@
 #include <sys/un.h>
 #include <arpa/inet.h>
 
+enum bools
+{
+    FALSE = 0,
+    TRUE = 1
+};
+
 enum flags
 {
     SYN = 1,

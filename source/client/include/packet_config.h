@@ -38,7 +38,7 @@ typedef struct sent_packet
 {
     struct packet   pt;
     uint32_t        expected_ack_number;
-    uint8_t         is_packet_empty;
+    uint8_t         is_packet_full;
 } sent_packet;
 
 int                 create_window(struct sent_packet **window, uint8_t window_size);
