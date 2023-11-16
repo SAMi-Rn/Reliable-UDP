@@ -13,7 +13,7 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
 
     for (int i = 0; i < window_size; i++)
     {
-        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
+        window[i] = (sent_packet*)calloc(0, sizeof(sent_packet));
 //        window[i] -> is_packet_full = 1;
     }
 
@@ -117,11 +117,11 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
     {
         printf("%d: %d\n", i, window[i].is_packet_full);
     }
-    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     add_packet_to_window(window, pt);
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
+    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     printf("\n\nSENDING:\n");
     printf("bytes: %zd\n", result);
     printf("seq number: %u\n", pt->hd.seq_number);
@@ -142,20 +142,31 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 int add_packet_to_window(struct sent_packet *window, struct packet *pt)
 {
     gettimeofday(&pt->hd.tv, NULL);
-    window[first_empty_packet].pt                       = *pt;
-    window[first_empty_packet].is_packet_full           = TRUE;
-    if (pt->hd.flags == SYN)
+    window[first_empty_packet].pt                           = *pt;
+    if (pt->hd.flags == ACK)
     {
-        window[first_empty_packet].expected_ack_number      = 1;
-    }
-    else if (pt->hd.flags == SYNACK)
-    {
-        window[first_empty_packet].expected_ack_number = pt -> hd.seq_number + 1;
+        window[first_empty_packet].is_packet_full           = FALSE;
+        first_empty_packet++;
+        first_unacked_ring_buffer(window);
     }
     else
     {
-        window[first_empty_packet].expected_ack_number = pt->hd.seq_number +
-                                                         strlen(pt->data);
+        window[first_empty_packet].is_packet_full           = TRUE;
+    }
+
+    if (pt->hd.flags == SYN)
+    {
+        window[first_empty_packet].expected_ack_number      = pt -> hd.seq_number + 1;
+    }
+    else if (pt->hd.flags == SYNACK)
+    {
+        window[first_empty_packet].expected_ack_number      = pt -> hd.seq_number + 1;
+        window[first_empty_packet].pt.hd.seq_number         = pt -> hd.seq_number + 1;
+    }
+    else
+    {
+        window[first_empty_packet].expected_ack_number      = pt->hd.seq_number +
+                                                                strlen(pt->data);
     }
     first_packet_ring_buffer(window);
     window_empty(window);
