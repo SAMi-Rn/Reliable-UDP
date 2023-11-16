@@ -36,7 +36,7 @@ uint8_t server_drop_rate;
 int         identify_sender(struct sockaddr_storage *dest_ip,
             struct sockaddr_storage *client, struct sockaddr_storage *server);
 int         random_number(void);
-int         calculate_lossiness(packet *pt, int destination);
+int         calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate);
 int         calculate_drop(uint8_t percentage);
 int         calculate_delay(uint8_t percentage);
 int         send_packet(int sockfd, packet *pt, struct sockaddr_storage *addr);
