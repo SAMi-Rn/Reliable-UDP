@@ -137,6 +137,7 @@ int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packe
     packet_to_send.hd.ack_number            = create_ack_number(0, 0);
     packet_to_send.hd.flags                 = SYN;
     packet_to_send.hd.window_size           = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send);
 
