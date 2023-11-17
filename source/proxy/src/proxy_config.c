@@ -94,49 +94,6 @@ int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
     }
 
     return SEND;
-//    if (destination == CLIENT)
-//    {
-//        if (client_drop_rate > 0)
-//        {
-//            if (calculate_drop(client_drop_rate))
-//            {
-//                return DROP;
-//            }
-//        }
-//
-//        if (client_delay_rate > 0)
-//        {
-//            if (calculate_delay(client_delay_rate))
-//            {
-//                return CLIENT_DELAY;
-//            }
-//        }
-//
-//        return SEND;
-//    }
-//
-//    if (destination == SERVER)
-//    {
-//        if (server_drop_rate > 0)
-//        {
-//            if (calculate_drop(server_drop_rate))
-//            {
-//                return DROP;
-//            }
-//        }
-//
-//        if (client_delay_rate > 0)
-//        {
-//            if (calculate_delay(server_delay_rate))
-//            {
-//                return SERVER_DELAY;
-//            }
-//        }
-//
-//        return SEND;
-//    }
-//
-//    return DROP;
 }
 
 int calculate_drop(uint8_t percentage)

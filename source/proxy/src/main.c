@@ -4,6 +4,8 @@
 #include "proxy_config.h"
 #include <pthread.h>
 
+#define MAX_THREADS 25
+
 enum application_states
 {
     STATE_PARSE_ARGUMENTS = FSM_USER_START,
@@ -11,12 +13,15 @@ enum application_states
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
     STATE_BIND_SOCKET,
+    STATE_CREATE_WINDOW,
     STATE_CREATE_SERVER_THREAD,
     STATE_LISTEN_CLIENT,
     STATE_LISTEN_SERVER,
     STATE_CLIENT_CALCULATE_LOSSINESS,
     STATE_SERVER_CALCULATE_LOSSINESS,
     STATE_SEND_MESSAGE,
+    STATE_CLIENT_DELAY_PACKET,
+    STATE_SERVER_DELAY_PACKET,
     STATE_CLEANUP,
     STATE_ERROR
 };
@@ -26,12 +31,15 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_server_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int listen_client_handler(struct fsm_context *context, struct fsm_error *err);
 static int listen_server_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_message_handler(struct fsm_context *context, struct fsm_error *err);
 static int calculate_client_lossiness_handler(struct fsm_context *context, struct fsm_error *err);
 static int calculate_server_lossiness_handler(struct fsm_context *context, struct fsm_error *err);
+static int client_delay_packet_handler(struct fsm_context *context, struct fsm_error *err);
+static int server_delay_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
@@ -41,15 +49,20 @@ static int                      setup_signal_handler(struct fsm_error *err);
 static volatile sig_atomic_t exit_flag = 0;
 
 void *init_server_thread(void *ptr);
+void *init_delay_thread(void *ptr);
 
 typedef struct arguments
 {
-    int                     client_sockfd, server_sockfd;
+    int                     client_sockfd, server_sockfd, num_of_threads, client_delay_index;
+    uint8_t                 window_size, client_first_empty_packet, server_first_empty_packet;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct;
     pthread_t               server_thread;
-    struct packet           pt;
+    pthread_t               *thread_pool;
+    struct sent_packet      *server_window;
+    struct sent_packet      *client_window;
+    uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate;
 } arguments;
 
 
@@ -172,6 +185,23 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
     return STATE_CREATE_SERVER_THREAD;
 }
 
+static int create_window_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in create window", "STATE_CREATE_WINDOW");
+    if (create_window(&ctx -> args -> server_window, ctx -> args -> window_size, &ctx -> args -> server_first_empty_packet) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    if (create_window(&ctx -> args -> client_window, ctx -> args -> window_size, &ctx -> args -> client_first_empty_packet) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_CREATE_SERVER_THREAD;
+}
 static int create_server_thread_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context      *ctx;
@@ -197,7 +227,7 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->client_sockfd, &ctx->args->pt);
+        result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_window[ctx -> args -> client_first_empty_packet].pt);
 
         if (result == -1)
         {
@@ -220,7 +250,7 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->server_sockfd, &ctx->args->pt);
+        result = receive_packet(ctx->args->server_sockfd, &ctx->args->server_pt);
 
         if (result == -1)
         {
@@ -251,11 +281,13 @@ static int calculate_client_lossiness_handler(struct fsm_context *context, struc
     result = calculate_lossiness(client_drop_rate, client_delay_rate);
     if (result == DROP)
     {
+        ctx -> args -> client_delay_index = ;
         return STATE_LISTEN_CLIENT;
     }
     else if (result == DELAY)
     {
-        delay_packet(&ctx -> args -> pt, client_delay_rate);
+        return STATE_CLIENT_DELAY_PACKET;
+        delay_packet(&ctx -> args -> server_pt, client_delay_rate);
     }
 
     return STATE_LISTEN_CLIENT;
@@ -274,10 +306,54 @@ static int calculate_server_lossiness_handler(struct fsm_context *context, struc
     }
     else if (result == DELAY)
     {
-        delay_packet(&ctx -> args -> pt, server_delay_rate);
+        return STATE_SERVER_DELAY_PACKET;
+        delay_packet(&ctx -> args -> server_pt, server_delay_rate);
     }
 
     return STATE_LISTEN_CLIENT;
+}
+
+static int client_delay_packet_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    pthread_t *temp_thread_pool;
+
+    ctx = context;
+    temp_thread_pool = ctx -> args -> thread_pool;
+    SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads++);
+    if (temp_thread_pool == NULL)
+    {
+        return STATE_ERROR;
+    }
+
+    ctx -> args -> thread_pool = temp_thread_pool;
+
+    pthread_create(&ctx -> args -> thread_pool[ctx -> args -> num_of_threads], NULL, init_delay_thread, (void *) ctx);
+
+    return STATE_LISTEN_CLIENT;
+}
+
+static int server_delay_packet_handler(struct fsm_context *context, struct fsm_error *err)
+{
+
+    struct fsm_context *ctx;
+    pthread_t *temp_thread_pool;
+
+    ctx = context;
+    temp_thread_pool = ctx -> args -> thread_pool;
+    SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads++);
+    if (temp_thread_pool == NULL)
+    {
+        return STATE_ERROR;
+    }
+
+    ctx -> args -> thread_pool = temp_thread_pool;
+
+    pthread_create(&ctx -> args -> thread_pool[ctx -> args -> num_of_threads], NULL, init_delay_thread, (void *) ctx);
+
+    return STATE_LISTEN_SERVER;
 }
 
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
@@ -320,3 +396,9 @@ void *init_server_thread(void *ptr)
     return NULL;
 }
 
+void *init_delay_thread(void *ptr)
+{
+   struct fsm_context *ctx = (struct fsm_context *) ptr;
+
+    delay_packet()
+}

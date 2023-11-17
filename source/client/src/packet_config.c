@@ -43,7 +43,7 @@ int window_empty(struct sent_packet *window)
 
 int first_packet_ring_buffer(struct sent_packet *window)
 {
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < window_size; i++)
     {
         printf("%d: %d\n", i, window[i].is_packet_full);
     }
