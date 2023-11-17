@@ -7,6 +7,8 @@
 #include <printf.h>
 #include <arpa/inet.h>
 
+uint8_t                     window_size;
+
 typedef struct header
 {
     uint32_t                    seq_number;
@@ -24,5 +26,14 @@ typedef struct packet
     char            data[512];
 } packet;
 
+typedef struct sent_packet
+{
+    struct packet   pt;
+    uint8_t         is_packet_full;
+} sent_packet;
+
+int                 create_window(struct sent_packet **window, uint8_t cmd_line_window_size, uint8_t *first_empty_packet);
+int                 first_packet_ring_buffer(struct sent_packet *window, uint8_t *first_empty_packet);
+int                 remove_packet_from_window(struct sent_packet *window, struct packet *pt);
 
 #endif //CLIENT_PACKET_CONFIG_H
