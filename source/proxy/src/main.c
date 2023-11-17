@@ -19,6 +19,8 @@ enum application_states
     STATE_LISTEN_SERVER,
     STATE_CLIENT_CALCULATE_LOSSINESS,
     STATE_SERVER_CALCULATE_LOSSINESS,
+    STATE_CLIENT_DROP,
+    STATE_SERVER_DROP,
     STATE_SEND_MESSAGE,
     STATE_CLIENT_DELAY_PACKET,
     STATE_SERVER_DELAY_PACKET,
@@ -250,7 +252,8 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->server_sockfd, &ctx->args->server_pt);
+        result = receive_packet(ctx->args->server_sockfd,
+                                &ctx->args->server_window[ctx -> args -> server_first_empty_packet].pt);
 
         if (result == -1)
         {
@@ -281,13 +284,12 @@ static int calculate_client_lossiness_handler(struct fsm_context *context, struc
     result = calculate_lossiness(client_drop_rate, client_delay_rate);
     if (result == DROP)
     {
-        ctx -> args -> client_delay_index = ;
-        return STATE_LISTEN_CLIENT;
+        ctx -> args -> client_delay_index = calculate_lossiness(ctx -> args -> client_drop_rate, ctx -> args -> client_delay_rate);
+        return STATE_CLIENT_DROP;
     }
     else if (result == DELAY)
     {
         return STATE_CLIENT_DELAY_PACKET;
-        delay_packet(&ctx -> args -> server_pt, client_delay_rate);
     }
 
     return STATE_LISTEN_CLIENT;
@@ -307,7 +309,6 @@ static int calculate_server_lossiness_handler(struct fsm_context *context, struc
     else if (result == DELAY)
     {
         return STATE_SERVER_DELAY_PACKET;
-        delay_packet(&ctx -> args -> server_pt, server_delay_rate);
     }
 
     return STATE_LISTEN_CLIENT;
@@ -399,6 +400,12 @@ void *init_server_thread(void *ptr)
 void *init_delay_thread(void *ptr)
 {
    struct fsm_context *ctx = (struct fsm_context *) ptr;
+   struct packet *temp_packet;
+   uint8_t temp_delay;
 
-    delay_packet()
+   temp_packet = &ctx -> args -> client_window[ctx -> args -> client_delay_index].pt;
+   temp_delay  = client_delay_rate;
+
+   delay_packet(temp_packet, temp_delay);
+   send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
 }
