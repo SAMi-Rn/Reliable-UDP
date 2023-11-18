@@ -17,14 +17,26 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         src/fsm.c
         include/fsm.h
         src/packet_config.c
-        include/packet_config.h)
+        include/packet_config.h
+        src/proxy_config.c
+        include/proxy_config.h
+        src/command_line.c
+        include/command_line.h
+        src/queue.c
+        include/queue.h)
 set(HEADER_LIST ""
         src/server_config.c
         include/server_config.h
         src/fsm.c
         include/fsm.h
         src/packet_config.c
-        include/packet_config.h)
+        include/packet_config.h
+        src/proxy_config.c
+        include/proxy_config.h
+        src/command_line.c
+        include/command_line.h
+        src/queue.c
+        include/queue.h)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
