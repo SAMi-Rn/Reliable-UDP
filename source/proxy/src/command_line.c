@@ -8,21 +8,47 @@
 #include <inttypes.h>
 #include "command_line.h"
 
-int parse_arguments(int argc, char *argv[], char **server_addr, char **client_addr, char **server_port_str, char **client_port_str, struct fsm_error *err)
+int                 parse_arguments(int argc, char *argv[], char **server_addr,
+                                    char **client_addr, char **server_port_str,
+                                    char **client_port_str, uint8_t *client_delay_rate,
+                                    uint8_t *client_drop_rate, uint8_t *server_delay_rate,
+                                    uint8_t *server_drop_rate, struct fsm_error *err)
 {
     int opt;
-    bool c_flag, s_flag, p_flag, w_flag;
+    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, L_flag, l_flag, w_flag;
 
     opterr = 0;
+    C_flag = 0;
     c_flag = 0;
+    S_flag = 0;
     s_flag = 0;
-    p_flag = 0;
+    D_flag = 0;
+    d_flag = 0;
+    L_flag = 0;
+    l_flag = 0;
     w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "c:s:p:w:h")) != -1)
+    while ((opt = getopt(argc, argv, "C:c:S:s:w:D:d:L:l:h")) != -1)
     {
         switch (opt)
         {
+            case 'C':
+            {
+                if (C_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-C' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                C_flag++;
+                *client_addr = optarg;
+                break;
+            }
             case 'c':
             {
                 if (c_flag)
@@ -37,7 +63,24 @@ int parse_arguments(int argc, char *argv[], char **server_addr, char **client_ad
                 }
 
                 c_flag++;
-                *client_addr = optarg;
+                *client_port_str = optarg;
+                break;
+            }
+            case 'S':
+            {
+                if (S_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-S' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                S_flag++;
+                *server_addr = optarg;
                 break;
             }
             case 's':
@@ -54,24 +97,103 @@ int parse_arguments(int argc, char *argv[], char **server_addr, char **client_ad
                 }
 
                 s_flag++;
-                *server_addr = optarg;
+                *server_port_str = optarg;
                 break;
             }
-            case 'p':
+            case 'D':
             {
-                if (p_flag)
+                if (D_flag)
                 {
                     char message[40];
 
-                    snprintf(message, sizeof(message), "option '-p' can only be passed in once.");
+                    snprintf(message, sizeof(message), "option '-D' can only be passed in once.");
                     usage(argv[0]);
                     SET_ERROR(err, message);
 
                     return -1;
                 }
 
-                p_flag++;
-                *server_port_str = optarg;
+                D_flag++;
+
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, client_drop_rate, err) == -1)
+                {
+                    return -1;
+                }
+                break;
+            }
+            case 'd':
+            {
+                if (d_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-d' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                d_flag++;
+
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, server_drop_rate, err) == -1)
+                {
+                    return -1;
+                }
+                break;
+            }
+            case 'L':
+            {
+                if (L_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-L' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                L_flag++;
+
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, client_delay_rate, err) == -1)
+                {
+                    return -1;
+                }
+                break;
+            }
+            case 'l':
+            {
+                if (l_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-l' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                l_flag++;
+
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, server_delay_rate, err) == -1)
+                {
+                    return -1;
+                }
                 break;
             }
             case 'w':
@@ -114,38 +236,33 @@ int parse_arguments(int argc, char *argv[], char **server_addr, char **client_ad
             }
         }
     }
-//    if (optind == argc)
-//    {
-//        SET_ERROR(err, "Need to pass at least one file to send.");
-//        char message[40];
-//
-//        snprintf(message, sizeof(message), "Need to pass at least one file to send.");
-//        usage(argv[0]);
-//        return -1;
-//    }
-
-//    for (int i = optind; i < argc; i++)
-//    {
-//        get_files(argv[i], glob_result, err);
-//    }
 
     return 0;
 }
 
 void usage(const char *program_name)
 {
-    fprintf(stderr, "Usage: %s [-i] <value> [-p] <value> [-h] <value>\n", program_name);
+    fprintf(stderr, "Usage: %s [-C] <value> [-c] <value> [-D] <value> [-d] <value> [-w] <value> [-D] <value>\n", program_name);
+    fprintf(stderr, "[-d] <value> [-L] <value> [-l] <value> [-h] <value>\n");
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
-    fputs("  -c <value>             Option 'c' (required) with value, Sets the IP client_addr\n", stderr);
-    fputs("  -s <value>             Option 's' (required) with value, Sets the IP server_addr\n", stderr);
-    fputs("  -p <value>             Option 'p' (required) with value, Sets the Port\n", stderr);
+    fputs("  -C <value>             Option 'C' (required) with value, Sets the IP client_addr\n", stderr);
+    fputs("  -c <value>             Option 'c' (required) with value, Sets the client port\n", stderr);
+    fputs("  -S <value>             Option 'S' (required) with value, Sets the IP server_addr\n", stderr);
+    fputs("  -s <value>             Option 's' (required) with value, Sets the server port\n", stderr);
+    fputs("  -w <value>             Option 'w' (required) with value, Sets the window size\n", stderr);
+    fputs("  -D <value>             Option 'D' (required) with value, Sets the client drop rate\n", stderr);
+    fputs("  -d <value>             Option 'd' (required) with value, Sets the server drop rate\n", stderr);
+    fputs("  -L <value>             Option 'L' (required) with value, Sets the client delay rate\n", stderr);
+    fputs("  -l <value>             Option 'l' (required) with value, Sets the server delay rate\n", stderr);
 }
 
 int handle_arguments(const char *binary_name, const char *server_addr,
                                      const char *client_addr, const char *server_port_str,
                                      const char *client_port_str, in_port_t *server_port,
-                                     in_port_t *client_port, struct fsm_error *err)
+                                     in_port_t *client_port, uint8_t client_delay_rate,
+                                     uint8_t client_drop_rate, uint8_t server_delay_rate,
+                                     uint8_t server_drop_rate, struct fsm_error *err)
 {
     if(client_addr == NULL)
     {
@@ -174,6 +291,38 @@ int handle_arguments(const char *binary_name, const char *server_addr,
     if(client_port_str == NULL)
     {
         SET_ERROR(err, "The client port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(client_drop_rate > 100)
+    {
+        SET_ERROR(err, "The client drop rate is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(client_delay_rate > 100)
+    {
+        SET_ERROR(err, "The client delay rate is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_drop_rate > 100)
+    {
+        SET_ERROR(err, "The server drop rate is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_delay_rate > 100)
+    {
+        SET_ERROR(err, "The server delay rate is required.");
         usage(binary_name);
 
         return -1;
@@ -228,3 +377,42 @@ int parse_in_port_t(const char *binary_name, const char *str, in_port_t *port, s
     *port = (in_port_t)parsed_value;
     return 0;
 }
+
+int convert_to_int(const char *binary_name, char *string, uint8_t *value, struct fsm_error *err)
+{
+    char            *endptr;
+    uintmax_t       parsed_value;
+
+    errno = 0;
+    parsed_value = strtoumax(string, &endptr, 10);
+
+    if (errno != 0)
+    {
+        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    if(*endptr != '\0')
+    {
+        SET_ERROR(err, "Invalid characters in input.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if (parsed_value > 100)
+    {
+        char error_message[25];
+        snprintf(error_message, sizeof(error_message), "%s value out of range.", string);
+        SET_ERROR(err, error_message);
+        usage(binary_name);
+
+        return -1;
+    }
+
+    *value = (uint8_t) parsed_value;
+
+    return 0;
+}
+

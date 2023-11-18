@@ -21,7 +21,7 @@ int socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struc
     void     *vaddr;
     in_port_t net_port;
 
-    net_port = htons(60000);
+    net_port = htons(port);
 
     if(addr->ss_family == AF_INET)
     {
@@ -63,6 +63,29 @@ int socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struc
     }
 
     printf("Bound to socket: %s:%u\n", addr_str, port);
+
+    return 0;
+}
+
+int convert_address(const char *address, struct sockaddr_storage *addr, struct fsm_error *err)
+{
+    memset(addr, 0, sizeof(*addr));
+
+    if(inet_pton(AF_INET, address, &(((struct sockaddr_in *)addr)->sin_addr)) == 1)
+    {
+        // IPv4 server_addr
+        addr->ss_family = AF_INET;
+    }
+    else if(inet_pton(AF_INET6, address, &(((struct sockaddr_in6 *)addr)->sin6_addr)) == 1)
+    {
+        // IPv6 server_addr
+        addr->ss_family = AF_INET6;
+    }
+    else
+    {
+        SET_ERROR(err, "Address family not supported");
+        return -1;
+    }
 
     return 0;
 }
