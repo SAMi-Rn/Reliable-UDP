@@ -169,16 +169,11 @@ void usage(const char *program_name)
     fputs("  -p <value>             Option 'p' (required) with value, Sets the Port\n", stderr);
 }
 
-int handle_arguments(const char *binary_name, const char *server_addr, const char *client_addr, const char *port_str, in_port_t *port, struct fsm_error *err)
+int                 handle_arguments(const char *binary_name, const char *server_addr,
+                                     const char *client_addr, const char *server_port_str,
+                                     const char *client_port_str, in_port_t *server_port,
+                                     in_port_t *client_port, struct fsm_error *err)
 {
-    if(client_addr == NULL)
-    {
-        SET_ERROR(err, "The client_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
     if(server_addr == NULL)
     {
         SET_ERROR(err, "The server_addr is required.");
@@ -187,7 +182,15 @@ int handle_arguments(const char *binary_name, const char *server_addr, const cha
         return -1;
     }
 
-    if(port_str == NULL)
+    if(client_addr == NULL)
+    {
+        SET_ERROR(err, "The client_addr is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_port_str == NULL)
     {
         SET_ERROR(err, "The server_port is required.");
         usage(binary_name);
@@ -195,7 +198,20 @@ int handle_arguments(const char *binary_name, const char *server_addr, const cha
         return -1;
     }
 
-    if (parse_in_port_t(binary_name, port_str, port, err) == -1)
+    if(client_port_str == NULL)
+    {
+        SET_ERROR(err, "The server_port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if (parse_in_port_t(binary_name, server_port_str, server_port, err) == -1)
+    {
+        return -1;
+    }
+
+    if (parse_in_port_t(binary_name, client_port_str, client_port, err) == -1)
     {
         return -1;
     }

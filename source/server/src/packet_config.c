@@ -108,16 +108,11 @@ int first_unacked_ring_buffer(struct sent_packet *window)
 }
 
 
-int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
-                struct packet *pt)
+int send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt)
 {
     ssize_t result;
 
-    for (int i = 0; i < 5; i++)
-    {
-        printf("%d: %d\n", i, window[i].is_packet_full);
-    }
-    add_packet_to_window(window, pt);
+//    add_packet_to_window(window, pt);
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
@@ -174,7 +169,7 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
     return 0;
 }
 
-int receive_packet(int sockfd, struct sent_packet **window)
+int receive_packet(int sockfd, struct packet *temp_packet)
 {
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
@@ -201,6 +196,8 @@ int receive_packet(int sockfd, struct sent_packet **window)
 //    {
 //    read_received_packet(sockfd, server_addr, window, &pt);
 //    }
+
+    *temp_packet = pt;
 
     return 0;
 }
@@ -302,3 +299,13 @@ int valid_connection(struct sockaddr_storage *addr)
     return 0;
 }
 
+int check_seq_number(uint32_t seq_number, uint32_t expected_seq_number)
+{
+    return seq_number == expected_seq_number ? TRUE : FALSE;
+}
+
+uint32_t update_expected_seq_number(uint32_t seq_number, uint32_t data_size)
+{
+    printf("expected: %u\n", seq_number + data_size);
+    return seq_number + data_size;
+}
