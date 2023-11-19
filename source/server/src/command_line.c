@@ -8,51 +8,114 @@
 #include <inttypes.h>
 #include "command_line.h"
 
-int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address, char **port_str, struct fsm_error *err)
+int parse_arguments(int argc, char *argv[], char **server_addr,
+                char **client_addr, char **server_port_str,
+                char **client_port_str, uint8_t *window_size,
+                struct fsm_error *err)
 {
     int opt;
-    bool i_flag, p_flag;
+    bool C_flag, c_flag, S_flag, s_flag, w_flag;
 
     opterr = 0;
-    i_flag = 0;
-    p_flag = 0;
+    C_flag = 0;
+    c_flag = 0;
+    S_flag = 0;
+    s_flag = 0;
+    w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "i:p:h")) != -1)
+    while ((opt = getopt(argc, argv, "C:c:S:s:w:h")) != -1)
     {
         switch (opt)
         {
-            case 'i':
+            case 'C':
             {
-                if (i_flag)
+                if (C_flag)
                 {
                     char message[40];
 
-                    snprintf(message, sizeof(message), "option '-i' can only be passed in once.");
+                    snprintf(message, sizeof(message), "option '-C' can only be passed in once.");
                     usage(argv[0]);
                     SET_ERROR(err, message);
 
                     return -1;
                 }
 
-                i_flag++;
-                *address = optarg;
+                C_flag++;
+                *client_addr = optarg;
                 break;
             }
-            case 'p':
+            case 'c':
             {
-                if (p_flag)
+                if (c_flag)
                 {
                     char message[40];
 
-                    snprintf(message, sizeof(message), "option '-p' can only be passed in once.");
+                    snprintf(message, sizeof(message), "option '-c' can only be passed in once.");
                     usage(argv[0]);
                     SET_ERROR(err, message);
 
                     return -1;
                 }
 
-                p_flag++;
-                *port_str = optarg;
+                c_flag++;
+                *client_port_str = optarg;
+                break;
+            }
+            case 'S':
+            {
+                if (S_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-S' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                S_flag++;
+                *server_addr = optarg;
+                break;
+            }
+            case 's':
+            {
+                if (s_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-s' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                s_flag++;
+                *server_port_str = optarg;
+                break;
+            }
+            case 'w':
+            {
+                if (w_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-w' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                w_flag++;
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, window_size, err) == -1)
+                {
+                    return -1;
+                }
                 break;
             }
             case 'h':
@@ -78,15 +141,15 @@ int parse_arguments(int argc, char *argv[], glob_t *glob_result, char **address,
             }
         }
     }
-    if (optind == argc)
-    {
-        SET_ERROR(err, "Need to pass at least one file to send.");
-        char message[40];
-
-        snprintf(message, sizeof(message), "Need to pass at least one file to send.");
-        usage(argv[0]);
-        return -1;
-    }
+//    if (optind == argc)
+//    {
+//        SET_ERROR(err, "Need to pass at least one file to send.");
+//        char message[40];
+//
+//        snprintf(message, sizeof(message), "Need to pass at least one file to send.");
+//        usage(argv[0]);
+//        return -1;
+//    }
 
 //    for (int i = optind; i < argc; i++)
 //    {
@@ -101,38 +164,24 @@ void usage(const char *program_name)
     fprintf(stderr, "Usage: %s [-i] <value> [-p] <value> [-h] <value>\n", program_name);
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
-    fputs("  -i <value>             Option 'i' (required) with value, Sets the IP address\n", stderr);
+    fputs("  -c <value>             Option 'c' (required) with value, Sets the IP client_addr\n", stderr);
+    fputs("  -s <value>             Option 's' (required) with value, Sets the IP server_addr\n", stderr);
     fputs("  -p <value>             Option 'p' (required) with value, Sets the Port\n", stderr);
 }
 
-//void get_files(const char *pattern, glob_t *glob_result, struct fsm_error *err)
-//{
-//    int glob_status;
-//
-//    glob_status = glob(pattern, GLOB_APPEND, NULL, glob_result);
-//
-//    if(glob_status != 0)
-//    {
-//        if(glob_status == GLOB_NOMATCH)
-//        {
-//            fprintf(stderr, "No matching file found: %s\n", pattern);
-//        }
-//        else if (glob_status == GLOB_NOSPACE)
-//        {
-//            fprintf(stderr, "Memory allocation error.\n");
-//        }
-//        else
-//        {
-//            fprintf(stderr, "Error matching files.\n");
-//        }
-//    }
-//}
-
-int handle_arguments(const char *binary_name, const char *address, const char *port_str, in_port_t *port, struct fsm_error *err)
+int handle_arguments(const char *binary_name, const char *server_addr, const char *client_addr, const char *port_str, in_port_t *port, struct fsm_error *err)
 {
-    if(address == NULL)
+    if(client_addr == NULL)
     {
-        SET_ERROR(err, "The address is required.");
+        SET_ERROR(err, "The client_addr is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_addr == NULL)
+    {
+        SET_ERROR(err, "The server_addr is required.");
         usage(binary_name);
 
         return -1;
@@ -140,7 +189,7 @@ int handle_arguments(const char *binary_name, const char *address, const char *p
 
     if(port_str == NULL)
     {
-        SET_ERROR(err, "The port is required.");
+        SET_ERROR(err, "The server_port is required.");
         usage(binary_name);
 
         return -1;
@@ -188,5 +237,43 @@ int parse_in_port_t(const char *binary_name, const char *str, in_port_t *port, s
     }
 
     *port = (in_port_t)parsed_value;
+    return 0;
+}
+
+int convert_to_int(const char *binary_name, char *string, uint8_t *value, struct fsm_error *err)
+{
+    char            *endptr;
+    uintmax_t       parsed_value;
+
+    errno = 0;
+    parsed_value = strtoumax(string, &endptr, 10);
+
+    if (errno != 0)
+    {
+        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    if(*endptr != '\0')
+    {
+        SET_ERROR(err, "Invalid characters in input.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if (parsed_value > 100)
+    {
+        char error_message[25];
+        snprintf(error_message, sizeof(error_message), "%s value out of range.", string);
+        SET_ERROR(err, error_message);
+        usage(binary_name);
+
+        return -1;
+    }
+
+    *value = (uint8_t) parsed_value;
+
     return 0;
 }

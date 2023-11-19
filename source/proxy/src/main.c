@@ -79,7 +79,7 @@ void *init_server_delay_thread(void *ptr);
 
 typedef struct arguments
 {
-    int                     client_sockfd, server_sockfd, num_of_threads, client_delay_index;
+    int                     client_sockfd, server_sockfd, num_of_threads;
     uint8_t                 window_size, client_first_empty_packet, server_first_empty_packet;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str, *proxy_addr;
     in_port_t               server_port, client_port;
@@ -156,7 +156,8 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
                         &ctx -> args -> client_addr, &ctx -> args -> proxy_addr,
                         &ctx -> args -> server_port_str, &ctx -> args -> client_port_str,
                         &ctx -> args -> client_delay_rate, &ctx -> args -> client_drop_rate,
-                        &ctx -> args -> server_delay_rate, &ctx -> args -> server_drop_rate, err) == -1)
+                        &ctx -> args -> server_delay_rate, &ctx -> args -> server_drop_rate,
+                        &ctx -> args -> window_size, err) == -1)
     {
         return STATE_ERROR;
     }

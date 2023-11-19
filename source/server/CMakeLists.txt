@@ -21,7 +21,9 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         include/server_config.h
         src/fsm.c
         include/fsm.h
-        include/protocol.h)
+        include/protocol.h
+        src/protocol.c
+)
 set(HEADER_LIST ""
         src/command_line.c
         include/command_line.h
@@ -31,7 +33,9 @@ set(HEADER_LIST ""
         include/server_config.h
         src/fsm.c
         include/fsm.h
-        include/protocol.h)
+        include/protocol.h
+        src/protocol.c
+)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
