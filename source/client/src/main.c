@@ -87,11 +87,6 @@ int main(int argc, char **argv)
     };
     fsm_run(&context, &err, 0, 0 , transitions);
 
-
-//    result = sendto(sd, &pt, sizeof(pt), 0, (struct sockaddr*) &server_addr, sizeof(server_addr));
-
-//        recvfrom(sd, &pt, sizeof(pt), 0, (struct sockaddr*)  &client_addr, (socklen_t *) sizeof(client_addr));
-
     return 0;
 }
 

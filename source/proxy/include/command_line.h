@@ -9,7 +9,8 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                                     char **client_addr, char **proxy_addr, char **server_port_str,
                                     char **client_port_str, uint8_t *client_delay_rate,
                                     uint8_t *client_drop_rate, uint8_t *server_delay_rate,
-                                    uint8_t *server_drop_rate, struct fsm_error *err);
+                                    uint8_t *server_drop_rate, uint8_t *window_size,
+                                    struct fsm_error *err);
 int                 handle_arguments(const char *binary_name, const char *server_addr,
                                      const char *client_addr, const char *server_port_str,
                                      const char *proxy_addr,  const char *client_port_str,
