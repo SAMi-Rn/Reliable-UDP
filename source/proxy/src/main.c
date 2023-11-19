@@ -4,6 +4,8 @@
 #include "proxy_config.h"
 #include <pthread.h>
 
+#define PROXY_CLIENT_PORT 8000
+#define PROXY_SERVER_PORT 8050
 enum main_application_states
 {
     STATE_PARSE_ARGUMENTS = FSM_USER_START,
@@ -76,9 +78,9 @@ typedef struct arguments
 {
     int                     client_sockfd, server_sockfd, num_of_threads, client_delay_index;
     uint8_t                 window_size, client_first_empty_packet, server_first_empty_packet;
-    char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
+    char                    *server_addr, *client_addr, *server_port_str, *client_port_str, *proxy_addr;
     in_port_t               server_port, client_port;
-    struct sockaddr_storage server_addr_struct, client_addr_struct;
+    struct sockaddr_storage server_addr_struct, client_addr_struct, proxy_addr_struct;
     pthread_t               server_thread, keyboard_thread;
     pthread_t               *thread_pool;
     struct sent_packet      *server_window;
@@ -146,10 +148,10 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
     ctx = context;
     SET_TRACE(context, "in parse arguments handler", "STATE_PARSE_ARGUMENTS");
     if (parse_arguments(ctx -> argc, ctx -> argv, &ctx -> args -> server_addr,
-                        &ctx -> args -> client_addr, &ctx -> args -> server_port_str,
-                        &ctx -> args -> client_port_str, &ctx -> args -> client_delay_rate,
-                        &ctx -> args -> client_drop_rate, &ctx -> args -> server_delay_rate,
-                        &ctx -> args -> server_drop_rate, err) == -1)
+                        &ctx -> args -> client_addr, &ctx -> args -> proxy_addr,
+                        &ctx -> args -> server_port_str, &ctx -> args -> client_port_str,
+                        &ctx -> args -> client_delay_rate, &ctx -> args -> client_drop_rate,
+                        &ctx -> args -> server_delay_rate, &ctx -> args -> server_drop_rate, err) == -1)
     {
         return STATE_ERROR;
     }
@@ -163,10 +165,10 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
     SET_TRACE(context, "in handle arguments", "STATE_HANDLE_ARGUMENTS");
     if (handle_arguments(ctx -> argv[0], ctx -> args -> server_addr,
                          ctx -> args -> client_addr, ctx -> args -> server_port_str,
-                         ctx -> args -> client_port_str, &ctx -> args -> server_port,
-                         &ctx -> args -> client_port, ctx -> args -> client_delay_rate,
-                         ctx -> args -> client_drop_rate, ctx -> args -> server_delay_rate,
-                         ctx -> args -> server_drop_rate, err) != 0)
+                         ctx -> args -> proxy_addr, ctx -> args -> client_port_str,
+                         &ctx -> args -> server_port, &ctx -> args -> client_port,
+                         ctx -> args -> client_delay_rate, ctx -> args -> client_drop_rate,
+                         ctx -> args -> server_delay_rate, ctx -> args -> server_drop_rate, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -179,11 +181,14 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in convert server_addr", "STATE_CONVERT_ADDRESS");
+    if (convert_address(ctx -> args -> proxy_addr, &ctx -> args -> proxy_addr_struct, err) != 0)
+    {
+        return STATE_ERROR;
+    }
     if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, err) != 0)
     {
         return STATE_ERROR;
     }
-
     if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, err) != 0)
     {
         return STATE_ERROR;
@@ -197,13 +202,13 @@ static int create_socket_handler(struct fsm_context *context, struct fsm_error *
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in create socket", "STATE_CREATE_SOCKET");
-    ctx -> args -> client_sockfd = socket_create(ctx -> args -> client_addr_struct.ss_family, SOCK_DGRAM, 0, err);
+    ctx -> args -> client_sockfd = socket_create(ctx -> args -> proxy_addr_struct.ss_family, SOCK_DGRAM, 0, err);
     if (ctx -> args -> client_sockfd == -1)
     {
         return STATE_ERROR;
     }
 
-    ctx -> args -> server_sockfd = socket_create(ctx -> args -> server_addr_struct.ss_family, SOCK_DGRAM, 0, err);
+    ctx -> args -> server_sockfd = socket_create(ctx -> args -> proxy_addr_struct.ss_family, SOCK_DGRAM, 0, err);
     if (ctx -> args -> server_sockfd == -1)
     {
         return STATE_ERROR;
@@ -217,12 +222,12 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in bind socket", "STATE_BIND_SOCKET");
-    if (socket_bind(ctx -> args -> client_sockfd, &ctx -> args -> client_addr_struct, ctx -> args -> client_port, err))
+    if (socket_bind(ctx -> args -> client_sockfd, &ctx -> args -> proxy_addr_struct, PROXY_CLIENT_PORT, err))
     {
         return STATE_ERROR;
     }
 
-    if (socket_bind(ctx -> args -> server_sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, err))
+    if (socket_bind(ctx -> args -> server_sockfd, &ctx -> args -> proxy_addr_struct,PROXY_SERVER_PORT , err))
     {
         return STATE_ERROR;
     }
@@ -478,19 +483,21 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 
     while (!exit_flag)
     {
+        read_keyboard(ctx->args->client_drop_rate,ctx->args->client_delay_rate,
+                      ctx->args->server_drop_rate, ctx->args->server_delay_rate );
         return STATE_UPDATE_LOSSINESS;
     }
     return FSM_EXIT;
 }
 
-static int update_lossiness_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "", "STATE_UPDATE_LOSSINESS");
-
-    return STATE_READ_FROM_KEYBOARD;
-}
+//static int update_lossiness_handler(struct fsm_context *context, struct fsm_error *err)
+//{
+//    struct fsm_context *ctx;
+//    ctx = context;
+//    SET_TRACE(context, "", "STATE_UPDATE_LOSSINESS");
+//
+//    return STATE_READ_FROM_KEYBOARD;
+//}
 
 void *init_server_thread(void *ptr)
 {

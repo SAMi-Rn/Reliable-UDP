@@ -9,13 +9,13 @@
 #include "command_line.h"
 
 int                 parse_arguments(int argc, char *argv[], char **server_addr,
-                                    char **client_addr, char **server_port_str,
+                                    char **client_addr, char **proxy_addr, char **server_port_str,
                                     char **client_port_str, uint8_t *client_delay_rate,
                                     uint8_t *client_drop_rate, uint8_t *server_delay_rate,
                                     uint8_t *server_drop_rate, struct fsm_error *err)
 {
     int opt;
-    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, L_flag, l_flag, w_flag;
+    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag, w_flag;
 
     opterr = 0;
     C_flag = 0;
@@ -24,11 +24,12 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
     s_flag = 0;
     D_flag = 0;
     d_flag = 0;
+    P_flag = 0;
     L_flag = 0;
     l_flag = 0;
     w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "C:c:S:s:w:D:d:L:l:h")) != -1)
+    while ((opt = getopt(argc, argv, "C:c:S:s:P:w:D:d:L:l:h")) != -1)
     {
         switch (opt)
         {
@@ -100,6 +101,23 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                 *server_port_str = optarg;
                 break;
             }
+            case 'P':
+            {
+                if (P_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-P' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                P_flag++;
+                *proxy_addr = optarg;
+                break;
+            }
             case 'D':
             {
                 if (D_flag)
@@ -148,6 +166,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                 }
                 break;
             }
+
             case 'L':
             {
                 if (L_flag)
@@ -242,14 +261,15 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
 void usage(const char *program_name)
 {
-    fprintf(stderr, "Usage: %s [-C] <value> [-c] <value> [-D] <value> [-d] <value> [-w] <value> [-D] <value>\n", program_name);
-    fprintf(stderr, "[-d] <value> [-L] <value> [-l] <value> [-h] <value>\n");
+    fprintf(stderr, "Usage: %s [-C] <value> [-c] <value> [-S] <value> [-s] <value> [-P] <value>\n", program_name);
+    fprintf(stderr, "[-w] <value> [-D] <value>[-d] <value> [-L] <value> [-l] <value> [-h]\n");
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
     fputs("  -C <value>             Option 'C' (required) with value, Sets the IP client_addr\n", stderr);
     fputs("  -c <value>             Option 'c' (required) with value, Sets the client port\n", stderr);
     fputs("  -S <value>             Option 'S' (required) with value, Sets the IP server_addr\n", stderr);
     fputs("  -s <value>             Option 's' (required) with value, Sets the server port\n", stderr);
+    fputs("  -P <value>             Option 'P' (required) with value, Sets the IP proxy_addr\n", stderr);
     fputs("  -w <value>             Option 'w' (required) with value, Sets the window size\n", stderr);
     fputs("  -D <value>             Option 'D' (required) with value, Sets the client drop rate\n", stderr);
     fputs("  -d <value>             Option 'd' (required) with value, Sets the server drop rate\n", stderr);
@@ -258,11 +278,12 @@ void usage(const char *program_name)
 }
 
 int handle_arguments(const char *binary_name, const char *server_addr,
-                                     const char *client_addr, const char *server_port_str,
-                                     const char *client_port_str, in_port_t *server_port,
-                                     in_port_t *client_port, uint8_t client_delay_rate,
-                                     uint8_t client_drop_rate, uint8_t server_delay_rate,
-                                     uint8_t server_drop_rate, struct fsm_error *err)
+                     const char *client_addr, const char *server_port_str,
+                     const char *proxy_addr,  const char *client_port_str,
+                     in_port_t *server_port, in_port_t *client_port,
+                     uint8_t client_delay_rate, uint8_t client_drop_rate,
+                     uint8_t server_delay_rate, uint8_t server_drop_rate,
+                     struct fsm_error *err)
 {
     if(client_addr == NULL)
     {
@@ -291,6 +312,14 @@ int handle_arguments(const char *binary_name, const char *server_addr,
     if(client_port_str == NULL)
     {
         SET_ERROR(err, "The client port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(proxy_addr == NULL)
+    {
+        SET_ERROR(err, "The proxy_addr is required.");
         usage(binary_name);
 
         return -1;

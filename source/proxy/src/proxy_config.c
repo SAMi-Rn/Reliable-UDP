@@ -155,3 +155,174 @@ socklen_t size_of_address(struct sockaddr_storage *addr)
 {
     return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 }
+
+int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop, uint8_t server_delay) {
+    char *line = NULL;
+    size_t len = 0;
+    ssize_t read;
+    int first_menu;
+    int second_menu;
+    read = 0;
+    char menu[100];
+    snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
+                                  "1. Client Losiness:\n"
+                                  "2. Server Losiness:\n"
+                                  "3. Exit:\n"
+                                  "Enter your Answer: ");
+
+
+
+    do
+    {
+        printf("%s\n", menu);
+        first_menu = read_menu(3);
+        switch (first_menu)
+        {
+            case 1:
+                printf("%d\n", first_menu);
+                do
+                {
+                    printf("Client Drop and Delay rate\n");
+                    printf("1. Drop Rate: \n");
+                    printf("2. Delay Rate: \n");
+                    printf("3. Back \n");
+                    second_menu = read_menu(3);
+                    switch (second_menu)
+                    {
+                        case 1:
+                            printf("Enter Client's Drop Rate :");
+                            int drop =  read_menu(100);
+                            if(drop == -1)
+                            {
+                                printf("Client's Drop Rate value should be between 0-100!\n");
+                                break;
+                            }
+                            client_drop_rate = drop;
+                            second_menu = 3;
+                            break;
+
+                        case 2:
+                            printf("Enter Client's Delay Rate :");
+                            int delay =read_menu(100);
+                            if(delay == -1)
+                            {
+                                printf("Client's Delay Rate value should be between 0-100!\n");
+                                break;
+                            }
+                            client_delay_rate = delay;
+                            second_menu = 3;
+                            break;
+
+                        case 3:
+                            second_menu = 3;
+                            break;
+                        case -1:
+                            printf("It is not valid, try again\n");
+                        default:
+                            break;
+                    }
+                }while(second_menu != 3);
+            case 2:
+                do
+                {
+                    printf("Server Drop and Delay rate\n");
+                    printf("1. Drop Rate: \n");
+                    printf("2. Delay Rate: \n");
+                    printf("3. Back \n");
+                    second_menu = read_menu(3);
+                    switch (second_menu)
+                    {
+                        case 1:
+                            printf("Enter Server's Drop Rate :");
+                            int drop =  read_menu(100);
+                            if(drop == -1)
+                            {
+                                printf("Server's Drop Rate value should be between 0-100!\n");
+                                break;
+                            }
+                            server_drop_rate = drop;
+                            second_menu = 3;
+                            break;
+
+                        case 2:
+                            printf("Enter Server's Delay Rate :");
+                            int delay =read_menu(100);
+                            if(delay == -1)
+                            {
+                                printf("Server's Delay Rate value should be between 0-100!\n");
+                                break;
+                            }
+                            server_delay_rate = delay;
+                            second_menu = 3;
+                            break;
+
+                        case 3:
+                            second_menu = 3;
+                            break;
+                        case -1:
+                            printf("It is not valid, try again\n");
+                        default:
+                            break;
+                    }
+                }while(second_menu != 3);
+            case 3:
+                first_menu = 3;
+                return 0;
+            case -1:
+                printf("It is not valid, try again\n");
+            default:
+                break;
+        }
+    }while ((first_menu != 3));
+
+    /*
+     * User entered C (Client)
+     *      Enter B to go back, D for drop, L for delay
+     *      1. Drop
+     *      2. Delay
+     *      3. Back
+     *      entered : 2
+     *          Enter your drop rate: 20 (change the client drop rate to 20!)
+     *
+     *          return
+     */
+
+//    printf("read: %s\nsize: %zd", line, strlen(line));
+//    *buffer = (char *) malloc(strlen(line));
+//    strcpy(*buffer, line);
+
+
+    return 0;
+}
+
+int read_menu(int upperbound)
+{
+    char buf[128];
+    errno = 0;
+    fgets(buf, 128, stdin);
+
+    char            *endptr;
+    int temp = (int)strtol(buf, &endptr, 10);
+    if (errno != 0)
+    {
+//        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    if(*endptr != '\n')
+    {
+        printf("end pointer: %c\n", *endptr);
+        printf("%d ",temp);
+
+        return -1;
+    }
+    if((int) temp > upperbound)
+    {
+        printf("larger than upperbound!\n");
+        return -1;
+    }
+    printf("Temp : %d\n\n", (int) temp);
+    return (int) temp ;
+}
+
