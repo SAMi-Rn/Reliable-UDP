@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include "packet_config.h"
+#include "inttypes.h"
 
 enum bools
 {
@@ -28,6 +29,7 @@ enum return_states
     SEND
 };
 
+
 uint8_t client_delay_rate;
 uint8_t server_delay_rate;
 uint8_t client_drop_rate;
@@ -43,5 +45,6 @@ int         send_packet(int sockfd, packet *pt, struct sockaddr_storage *addr);
 int         receive_packet(int sockfd, struct packet *pt);
 void        delay_packet(packet *pt, uint8_t delay_time);
 socklen_t   size_of_address(struct sockaddr_storage *addr);
-
+int         read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop, uint8_t server_delay);
+int        read_menu(int upperbound);
 #endif //PROXY_PROXY_CONFIG_H

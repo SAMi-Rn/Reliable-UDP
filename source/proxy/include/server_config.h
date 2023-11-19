@@ -20,4 +20,5 @@ int     socket_close(int sockfd, struct fsm_error *err);
 int     convert_address(const char *address, struct sockaddr_storage *addr, struct fsm_error *err);
 int     socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err);
 
+
 #endif //CLIENT_SERVER_CONFIG_H
