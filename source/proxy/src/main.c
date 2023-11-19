@@ -6,6 +6,8 @@
 
 #define PROXY_CLIENT_PORT 8000
 #define PROXY_SERVER_PORT 8050
+#define DELAY_TIME 5
+
 enum main_application_states
 {
     STATE_PARSE_ARGUMENTS = FSM_USER_START,
@@ -72,7 +74,8 @@ static volatile sig_atomic_t exit_flag = 0;
 
 void *init_server_thread(void *ptr);
 void *init_keyboard_thread(void *ptr);
-void *init_delay_thread(void *ptr);
+void *init_client_delay_thread(void *ptr);
+void *init_server_delay_thread(void *ptr);
 
 typedef struct arguments
 {
@@ -85,6 +88,7 @@ typedef struct arguments
     pthread_t               *thread_pool;
     struct sent_packet      *server_window;
     struct sent_packet      *client_window;
+    struct packet           server_packet, client_packet;
     uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate;
 } arguments;
 
@@ -92,10 +96,11 @@ int main(int argc, char **argv)
 {
     struct fsm_error err;
     struct arguments args = {
-            .client_delay_rate = 101,
-            .client_drop_rate = 101,
-            .server_delay_rate = 101,
-            .server_drop_rate = 101
+            .client_delay_rate  = 101,
+            .client_drop_rate   = 101,
+            .server_delay_rate  = 101,
+            .server_drop_rate   = 101,
+            .num_of_threads     = 0
     };
 
     struct fsm_context context = {
@@ -292,12 +297,14 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in connect socket", "STATE_LISTEN_CLIENT");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_window[ctx -> args -> client_first_empty_packet].pt);
+//        result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_window[ctx -> args -> client_first_empty_packet].pt);
+        result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_packet);
 
         if (result == -1)
         {
             return STATE_ERROR;
         }
+        printf("Client packet with seq number: %u received\n", ctx -> args -> client_packet.hd.seq_number);
 
         return STATE_CLIENT_CALCULATE_LOSSINESS;
     }
@@ -331,6 +338,7 @@ static int client_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_CLIENT_DROP");
 
+    printf("Client packet with seq number: %u dropped\n", ctx -> args -> client_packet.hd.seq_number);
     return STATE_LISTEN_CLIENT;
 }
 
@@ -342,7 +350,8 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CLIENT_DELAY_PACKET");
-    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads++);
+    ctx -> args -> num_of_threads++;
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
     {
         return STATE_ERROR;
@@ -350,7 +359,7 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
 
     ctx -> args -> thread_pool = temp_thread_pool;
 
-    pthread_create(&ctx -> args -> thread_pool[ctx -> args -> num_of_threads], NULL, init_delay_thread, (void *) ctx);
+    pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_client_delay_thread, (void *) ctx);
 
     return STATE_LISTEN_CLIENT;
 }
@@ -358,9 +367,19 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
 static int send_client_packet_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "", "STATE_SEND_CLIENT_PACKET");
+    int result;
 
+    ctx = context;
+
+    SET_TRACE(context, "", "STATE_SEND_CLIENT_PACKET");
+    result = send_packet(ctx -> args -> client_sockfd, &ctx -> args -> client_packet,
+                         &ctx -> args -> client_addr_struct);
+    if (result < 0)
+    {
+        return STATE_ERROR;
+    }
+
+    printf("Client packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
     return STATE_LISTEN_CLIENT;
 }
 
@@ -399,6 +418,7 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
         {
             return STATE_ERROR;
         }
+        printf("Server packet with seq number: %u received\n", ctx -> args -> server_packet.hd.seq_number);
 
         return STATE_SERVER_CALCULATE_LOSSINESS;
     }
@@ -432,6 +452,7 @@ static int server_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_SERVER_DROP");
 
+    printf("Server packet with seq number: %u dropped\n", ctx -> args -> server_packet.hd.seq_number);
     return STATE_LISTEN_SERVER;
 }
 
@@ -443,7 +464,8 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_SERVER_DELAY_PACKET");
-    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads++);
+    ctx -> args -> num_of_threads++;
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
     {
         return STATE_ERROR;
@@ -451,7 +473,7 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
 
     ctx -> args -> thread_pool = temp_thread_pool;
 
-    pthread_create(&ctx -> args -> thread_pool[ctx -> args -> num_of_threads], NULL, init_delay_thread, (void *) ctx);
+    pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_server_delay_thread, (void *) ctx);
 
     return STATE_LISTEN_SERVER;
 }
@@ -459,13 +481,21 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
 static int send_server_packet_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
+    int result;
+
     ctx = context;
     SET_TRACE(context, "", "STATE_SEND_SERVER_PACKET");
 
+    result = send_packet(ctx -> args -> server_sockfd, &ctx -> args -> server_packet,
+                         &ctx -> args -> server_addr_struct);
+    if (result < 0)
+    {
+        return STATE_ERROR;
+    }
+
+    printf("Server packet with seq number: %u sent\n", ctx -> args -> server_packet.hd.seq_number);
     return STATE_LISTEN_SERVER;
 }
-
-
 
 static int error_handler(struct fsm_context *context, struct fsm_error *err)
 {
@@ -483,8 +513,8 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 
     while (!exit_flag)
     {
-        read_keyboard(ctx->args->client_drop_rate,ctx->args->client_delay_rate,
-                      ctx->args->server_drop_rate, ctx->args->server_delay_rate );
+        read_keyboard(&ctx->args->client_drop_rate,&ctx->args->client_delay_rate,
+                      &ctx->args->server_drop_rate, &ctx->args->server_delay_rate );
         return STATE_UPDATE_LOSSINESS;
     }
     return FSM_EXIT;
@@ -502,21 +532,7 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 void *init_server_thread(void *ptr)
 {
     struct fsm_context *ctx = (struct fsm_context*) ptr;
-    struct fsm_context temp;
-
-    temp = *ctx;
     struct fsm_error err;
-//    struct fsm_error err;
-//    struct arguments args = {
-//            .client_delay_rate = 101,
-//            .client_drop_rate = 101,
-//            .server_delay_rate = 101,
-//            .server_drop_rate = 101
-//    };
-//
-//    struct fsm_context context = {
-//            .args = &args
-//    };
 
     static struct fsm_transition transitions[] = {
             {FSM_INIT,                          STATE_LISTEN_SERVER,                listen_server_handler},
@@ -543,8 +559,9 @@ void *init_keyboard_thread(void *ptr)
 
     static struct fsm_transition transitions[] = {
             {FSM_INIT,                          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
-            {STATE_READ_FROM_KEYBOARD,          STATE_UPDATE_LOSSINESS,     update_lossiness_handler},
-            {STATE_UPDATE_LOSSINESS,            STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
+//            {STATE_READ_FROM_KEYBOARD,          STATE_UPDATE_LOSSINESS,     update_lossiness_handler},
+//            {STATE_UPDATE_LOSSINESS,            STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
+            {STATE_READ_FROM_KEYBOARD,          STATE_ERROR,                error_handler},
             {STATE_READ_FROM_KEYBOARD,          FSM_EXIT,                   NULL},
             {STATE_ERROR,                       FSM_EXIT,                   NULL},
     };
@@ -554,18 +571,38 @@ void *init_keyboard_thread(void *ptr)
     return NULL;
 }
 
-void *init_delay_thread(void *ptr)
+void *init_client_delay_thread(void *ptr)
 {
-   struct fsm_context   *ctx;
-   struct packet        *temp_packet;
-   uint8_t              temp_delay;
+    struct fsm_context   *ctx;
+    struct packet        *temp_packet;
+    uint8_t              temp_delay;
 
-   ctx                  = (struct fsm_context *) ptr;
-   temp_packet          = &ctx -> args -> client_window[ctx -> args -> client_delay_index].pt;
-   temp_delay           = client_delay_rate;
+    ctx                  = (struct fsm_context *) ptr;
+    temp_packet          = &ctx -> args -> client_packet;
+    temp_delay           = ctx -> args -> client_delay_rate;
 
-   delay_packet(temp_packet, temp_delay);
-   send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
+    printf("Client packet with seq number: %u delayed\n", ctx -> args -> client_packet.hd.seq_number, temp_delay);
+    delay_packet(DELAY_TIME);
+    send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
 
-   return NULL;
+    printf("Client packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
+    return NULL;
+}
+
+void *init_server_delay_thread(void *ptr)
+{
+    struct fsm_context   *ctx;
+    struct packet        *temp_packet;
+    uint8_t              temp_delay;
+
+    ctx                  = (struct fsm_context *) ptr;
+    temp_packet          = &ctx -> args -> server_packet;
+    temp_delay           = ctx -> args -> server_delay_rate;
+
+    printf("Server packet with seq number: %u delayed\n", ctx -> args -> server_packet.hd.seq_number);
+    delay_packet(DELAY_TIME);
+    send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
+
+    printf("Server packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
+    return NULL;
 }
