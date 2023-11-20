@@ -4,6 +4,8 @@
 #include "command_line.h"
 #include <pthread.h>
 
+#define TIMER_TIME 1
+
 enum main_application_states
 {
     STATE_PARSE_ARGUMENTS = FSM_USER_START,
@@ -20,6 +22,7 @@ enum main_application_states
     STATE_ADD_PACKET_TO_WINDOW,
     STATE_CHECK_WINDOW_THREAD,
     STATE_SEND_MESSAGE,
+    STATE_CREATE_TIMER_THREAD,
     STATE_CLEANUP,
     STATE_ERROR
 };
@@ -47,6 +50,7 @@ static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_
 static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_window_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_message_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_timer_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
@@ -61,17 +65,18 @@ static int                      setup_signal_handler(struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
-void *init_recv_fucntion(void *ptr);
+void *init_recv_function(void *ptr);
+void *init_timer_function(void *ptr);
 
 typedef struct arguments
 {
-    int                     sockfd;
+    int                     sockfd, num_of_threads;
     uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct;
     struct sent_packet      *window;
-    pthread_t               recv_thread;
+    pthread_t               recv_thread, *thread_pool;
     struct packet           temp_packet, temp_message;
     char                    *temp_buffer, *buffer;
 } arguments;
@@ -104,7 +109,8 @@ int main(int argc, char **argv)
             {STATE_ADD_PACKET_TO_WINDOW,    STATE_SEND_MESSAGE,          send_message_handler},
 //            {STATE_ADD_PACKET_TO_WINDOW,    STATE_CHECK_WINDOW_THREAD,  check_window_thread_handler},
             {STATE_CHECK_WINDOW_THREAD,     STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
-            {STATE_SEND_MESSAGE,             STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
+            {STATE_SEND_MESSAGE,             STATE_CREATE_TIMER_THREAD,   create_timer_thread_handler},
+            {STATE_CREATE_TIMER_THREAD,             STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
             {STATE_READ_FROM_KEYBOARD,      STATE_CLEANUP,              cleanup_handler},
             {STATE_ERROR,                   STATE_CLEANUP,              cleanup_handler},
             {STATE_PARSE_ARGUMENTS,         STATE_ERROR,                error_handler},
@@ -224,7 +230,7 @@ static int create_recv_thread_handler(struct fsm_context *context, struct fsm_er
     int                     result;
     ctx = context;
     SET_TRACE(context, "in create receive thread", "STATE_CREATE_RECV_THREAD");
-    result = pthread_create(&ctx -> args -> recv_thread, NULL, init_recv_fucntion, (void *) ctx);
+    result = pthread_create(&ctx->args->recv_thread, NULL, init_recv_function, (void *) ctx);
     if (result < 0)
     {
         return STATE_ERROR;
@@ -289,7 +295,7 @@ static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_
     SET_TRACE(context, "", "STATE_ADD_PACKET_TO_WINDOW");
 
     create_data_packet(&ctx -> args -> temp_message, ctx -> args -> window, ctx -> args -> temp_buffer);
-    add_packet_to_window(ctx -> args -> window, &ctx -> args -> temp_message);
+//    add_packet_to_window(ctx -> args -> window, &ctx -> args -> temp_message);
 
     return STATE_SEND_MESSAGE;
 }
@@ -311,10 +317,31 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
         return STATE_ERROR;
     }
 
-    return STATE_READ_FROM_KEYBOARD;
+    return STATE_CREATE_TIMER_THREAD;
 }
 
+static int create_timer_thread_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    pthread_t *temp_thread_pool;
 
+    ctx = context;
+    temp_thread_pool = ctx -> args -> thread_pool;
+    SET_TRACE(context, "", "STATE_SERVER_DELAY_PACKET");
+    ctx -> args -> num_of_threads++;
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
+    if (temp_thread_pool == NULL)
+    {
+        return STATE_ERROR;
+    }
+
+    ctx -> args -> thread_pool = temp_thread_pool;
+
+    pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_timer_function, (void *) ctx);
+
+
+    return STATE_READ_FROM_KEYBOARD;
+}
 
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
 {
@@ -423,7 +450,7 @@ static int termination_handler(struct fsm_context *context, struct fsm_error *er
 
 }
 
-void *init_recv_fucntion(void *ptr)
+void *init_recv_function(void *ptr)
 {
     struct fsm_context *ctx = (struct fsm_context*) ptr;
     struct fsm_error err;
@@ -444,6 +471,27 @@ void *init_recv_fucntion(void *ptr)
     fsm_run(ctx, &err, 0, 0 , transitions);
 
     return NULL;
-
 }
 
+void *init_timer_function(void *ptr)
+{
+    struct fsm_context *ctx = (struct fsm_context*) ptr;
+    int index;
+    int counter;
+
+    index = previous_index(ctx -> args -> window);
+    counter = 0;
+
+    while (ctx -> args -> window[index].is_packet_full)
+    {
+        sleep(TIMER_TIME);
+        if (ctx -> args -> window[index].is_packet_full)
+        {
+            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
+                        &ctx->args->window[index].pt);
+            counter++;
+        }
+    }
+
+    return NULL;
+}

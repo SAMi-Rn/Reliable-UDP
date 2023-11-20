@@ -115,9 +115,13 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 
     for (int i = 0; i < 5; i++)
     {
-        printf("%d: %d\n", i, window[i].is_packet_full);
+        printf("before: %d: %d\n", i, window[i].is_packet_full);
     }
-    add_packet_to_window(window, pt);
+//    add_packet_to_window(window, pt);
+    for (int i = 0; i < 5; i++)
+    {
+        printf("after: %d: %d\n", i, window[i].is_packet_full);
+    }
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
@@ -315,4 +319,14 @@ int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)
 {
     printf("the acks: e: %u got: %u\n", expected_ack_number, ack_number);
     return expected_ack_number == ack_number ? TRUE : FALSE;
+}
+
+int previous_index(struct sent_packet *window)
+{
+    if (first_empty_packet == 0)
+    {
+        return window_size - 1;
+    }
+
+    return first_empty_packet - 1;
 }

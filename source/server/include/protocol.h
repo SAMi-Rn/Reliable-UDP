@@ -38,16 +38,16 @@ enum next_state_for_packet
 };
 
 int                 read_flags(uint8_t flags);
-int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr);
-int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 send_data_packet(int sockfd, struct sockaddr_storage *addr, char *data);
-int                 send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct packet *pt);
-int                 initiate_termination(int sockfd, struct sockaddr_storage *addr);
+int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct fsm_error *err);
+int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 send_data_packet(int sockfd, struct sockaddr_storage *addr, char *data, struct fsm_error *err);
+int                 send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
+int                 initiate_termination(int sockfd, struct sockaddr_storage *addr, struct fsm_error *err);
 int                 create_flags(uint8_t flags);
 
 #endif //CLIENT_PROTOCOL_H
