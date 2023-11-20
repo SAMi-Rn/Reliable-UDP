@@ -180,6 +180,7 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send);
 
