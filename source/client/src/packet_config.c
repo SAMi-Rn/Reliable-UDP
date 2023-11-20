@@ -115,9 +115,13 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
 
     for (int i = 0; i < 5; i++)
     {
-        printf("%d: %d\n", i, window[i].is_packet_full);
+        printf("before: %d: %d\n", i, window[i].is_packet_full);
     }
-    add_packet_to_window(window, pt);
+//    add_packet_to_window(window, pt);
+    for (int i = 0; i < 5; i++)
+    {
+        printf("after: %d: %d\n", i, window[i].is_packet_full);
+    }
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
@@ -174,33 +178,48 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
     return 0;
 }
 
-int receive_packet(int sockfd, struct sockaddr_storage *server_addr, struct sent_packet *window)
+int receive_packet(int sockfd, struct packet *pt)
 {
+//    struct sockaddr_storage     client_addr;
+//    socklen_t                   client_addr_len;
+//    struct packet               pt;
+//    ssize_t                     result;
+//
+//    client_addr_len = sizeof(client_addr);
+//    result = recvfrom(sockfd, &pt, sizeof(pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+//    if (result == -1)
+//    {
+//        printf("Error: %s\n", strerror(errno));
+//        return -1;
+//    }
+//
+//    printf("\n\nRECEIVED:\n");
+//    printf("bytes: %zd\n", result);
+//    printf("seq number: %u\n", pt.hd.seq_number);
+//    printf("ack number: %u\n", pt.hd.ack_number);
+//    printf("window number: %u\n", pt.hd.window_size);
+//    printf("flags: %u\n", pt.hd.flags);
+//    printf("time: %ld\n", pt.hd.tv.tv_sec);
+//    printf("data: %s\n\n\n\n", pt.data);
+////    if (valid_connection())
+////    {
+////            read_received_packet(sockfd, server_addr, window, &pt);
+////    }
+//
+//    return 0;
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
-    struct packet               pt;
+    struct packet               temp_pt;
     ssize_t                     result;
 
     client_addr_len = sizeof(client_addr);
-    result = recvfrom(sockfd, &pt, sizeof(pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+    result = recvfrom(sockfd, &temp_pt, sizeof(temp_pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
     if (result == -1)
     {
         printf("Error: %s\n", strerror(errno));
         return -1;
     }
-
-    printf("\n\nRECEIVED:\n");
-    printf("bytes: %zd\n", result);
-    printf("seq number: %u\n", pt.hd.seq_number);
-    printf("ack number: %u\n", pt.hd.ack_number);
-    printf("window number: %u\n", pt.hd.window_size);
-    printf("flags: %u\n", pt.hd.flags);
-    printf("time: %ld\n", pt.hd.tv.tv_sec);
-    printf("data: %s\n\n\n\n", pt.data);
-//    if (valid_connection())
-//    {
-        read_received_packet(sockfd, server_addr, window, &pt);
-//    }
+    *pt = temp_pt;
 
     return 0;
 }
@@ -218,12 +237,6 @@ int remove_packet_from_window(struct sent_packet *window, struct packet *pt)
 
     return 0;
 }
-
-socklen_t size_of_address(struct sockaddr_storage *addr)
-{
-    return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
-}
-
 
 uint32_t create_second_handshake_seq_number(void)
 {
@@ -302,3 +315,18 @@ int valid_connection(struct sockaddr_storage *addr)
     return 0;
 }
 
+int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)
+{
+    printf("the acks: e: %u got: %u\n", expected_ack_number, ack_number);
+    return expected_ack_number == ack_number ? TRUE : FALSE;
+}
+
+int previous_index(struct sent_packet *window)
+{
+    if (first_empty_packet == 0)
+    {
+        return window_size - 1;
+    }
+
+    return first_empty_packet - 1;
+}

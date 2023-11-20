@@ -146,7 +146,7 @@ int receive_packet(int sockfd, struct packet *pt)
     return 0;
 }
 
-void delay_packet(packet *pt, uint8_t delay_time)
+void delay_packet(uint8_t delay_time)
 {
     sleep(delay_time);
 }
@@ -156,21 +156,18 @@ socklen_t size_of_address(struct sockaddr_storage *addr)
     return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 }
 
-int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop, uint8_t server_delay) {
-    char *line = NULL;
-    size_t len = 0;
-    ssize_t read;
+int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay) {
+//    char *line = NULL;
+//    size_t len = 0;
+//    ssize_t read;
     int first_menu;
     int second_menu;
-    read = 0;
     char menu[100];
     snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
                                   "1. Client Losiness:\n"
                                   "2. Server Losiness:\n"
                                   "3. Exit:\n"
                                   "Enter your Answer: ");
-
-
 
     do
     {
@@ -197,10 +194,9 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                                 printf("Client's Drop Rate value should be between 0-100!\n");
                                 break;
                             }
-                            client_drop_rate = drop;
+                            *client_drop = drop;
                             second_menu = 3;
                             break;
-
                         case 2:
                             printf("Enter Client's Delay Rate :");
                             int delay =read_menu(100);
@@ -209,10 +205,9 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                                 printf("Client's Delay Rate value should be between 0-100!\n");
                                 break;
                             }
-                            client_delay_rate = delay;
+                            *client_delay = delay;
                             second_menu = 3;
                             break;
-
                         case 3:
                             second_menu = 3;
                             break;
@@ -221,7 +216,8 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                         default:
                             break;
                     }
-                }while(second_menu != 3);
+                }
+                while(second_menu != 3);
             case 2:
                 do
                 {
@@ -240,7 +236,7 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                                 printf("Server's Drop Rate value should be between 0-100!\n");
                                 break;
                             }
-                            server_drop_rate = drop;
+                            *server_drop = drop;
                             second_menu = 3;
                             break;
 
@@ -252,7 +248,7 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                                 printf("Server's Delay Rate value should be between 0-100!\n");
                                 break;
                             }
-                            server_delay_rate = delay;
+                            *server_delay = delay;
                             second_menu = 3;
                             break;
 
@@ -264,7 +260,8 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
                         default:
                             break;
                     }
-                }while(second_menu != 3);
+                }
+                while(second_menu != 3);
             case 3:
                 first_menu = 3;
                 return 0;
@@ -273,7 +270,8 @@ int read_keyboard(uint8_t client_drop, uint8_t client_delay, uint8_t server_drop
             default:
                 break;
         }
-    }while ((first_menu != 3));
+    }
+    while (first_menu != 3);
 
     /*
      * User entered C (Client)

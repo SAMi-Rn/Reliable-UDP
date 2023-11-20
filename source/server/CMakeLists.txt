@@ -21,7 +21,9 @@ set(SOURCE_LIST ${SOURCE_DIR}/main.c
         include/server_config.h
         src/fsm.c
         include/fsm.h
-        include/protocol.h)
+        include/protocol.h
+        src/protocol.c
+)
 set(HEADER_LIST ""
         src/command_line.c
         include/command_line.h
@@ -31,7 +33,9 @@ set(HEADER_LIST ""
         include/server_config.h
         src/fsm.c
         include/fsm.h
-        include/protocol.h)
+        include/protocol.h
+        src/protocol.c
+)
 
 add_compile_definitions(_POSIX_C_SOURCE=200809L)
 add_compile_definitions(_XOPEN_SOURCE=700)
@@ -77,21 +81,21 @@ add_compile_options("-Wall"
         "-Wshift-overflow"
         "-Wwrite-strings")
 
-if (${SANITIZE})
-    add_compile_options("-fsanitize=address")
-    add_compile_options("-fsanitize=undefined")
-    add_compile_options("-fsanitize-address-use-after-scope")
-    add_compile_options("-fstack-protector-all")
-    add_compile_options("-fdelete-null-pointer-checks")
-    add_compile_options("-fno-omit-frame-pointer")
-
-    if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-        add_compile_options("-fsanitize=leak")
-    endif ()
-
-    add_link_options("-fsanitize=address")
-    add_link_options("-fsanitize=bounds")
-endif ()
+#if (${SANITIZE})
+#    add_compile_options("-fsanitize=address")
+#    add_compile_options("-fsanitize=undefined")
+#    add_compile_options("-fsanitize-address-use-after-scope")
+#    add_compile_options("-fstack-protector-all")
+#    add_compile_options("-fdelete-null-pointer-checks")
+#    add_compile_options("-fno-omit-frame-pointer")
+#
+#    if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+#        add_compile_options("-fsanitize=leak")
+#    endif ()
+#
+#    add_link_options("-fsanitize=address")
+#    add_link_options("-fsanitize=bounds")
+#endif ()
 
 if ("${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     #    add_compile_options("-O2")
