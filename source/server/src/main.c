@@ -296,7 +296,7 @@ static int update_seq_num_handler(struct fsm_context *context, struct fsm_error 
 {
     struct fsm_context *ctx;
     ctx = context;
-    SET_TRACE(context, "", "STATE_SEND_PACKET");
+    SET_TRACE(context, "", "STATE_UPDATE_SEQ_NUMBER");
 
     if (ctx -> args -> temp_packet.hd.flags == SYN)
     {

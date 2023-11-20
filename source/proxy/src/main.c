@@ -187,15 +187,15 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in convert server_addr", "STATE_CONVERT_ADDRESS");
-    if (convert_address(ctx -> args -> proxy_addr, &ctx -> args -> proxy_addr_struct, err) != 0)
+    if (convert_address(ctx -> args -> proxy_addr, &ctx -> args -> proxy_addr_struct, 5, err) != 0)
     {
         return STATE_ERROR;
     }
-    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, err) != 0)
+    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, err) != 0)
     {
         return STATE_ERROR;
     }
-    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, err) != 0)
+    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, ctx -> args -> client_port, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -373,8 +373,8 @@ static int send_client_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
 
     SET_TRACE(context, "", "STATE_SEND_CLIENT_PACKET");
-    result = send_packet(ctx -> args -> client_sockfd, &ctx -> args -> client_packet,
-                         &ctx -> args -> client_addr_struct);
+    result = send_packet(ctx -> args -> server_sockfd, &ctx -> args -> client_packet,
+                         &ctx -> args -> server_addr_struct);
     if (result < 0)
     {
         return STATE_ERROR;
@@ -413,8 +413,7 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "", "STATE_LISTEN_SERVER");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->server_sockfd,
-                                &ctx->args->server_window[ctx -> args -> server_first_empty_packet].pt);
+        result = receive_packet(ctx->args->server_sockfd, &ctx -> args -> server_packet);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -487,8 +486,8 @@ static int send_server_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_SEND_SERVER_PACKET");
 
-    result = send_packet(ctx -> args -> server_sockfd, &ctx -> args -> server_packet,
-                         &ctx -> args -> server_addr_struct);
+    result = send_packet(ctx -> args -> client_sockfd, &ctx -> args -> server_packet,
+                         &ctx -> args -> client_addr_struct);
     if (result < 0)
     {
         return STATE_ERROR;
@@ -582,9 +581,9 @@ void *init_client_delay_thread(void *ptr)
     temp_packet          = &ctx -> args -> client_packet;
     temp_delay           = ctx -> args -> client_delay_rate;
 
-    printf("Client packet with seq number: %u delayed\n", ctx -> args -> client_packet.hd.seq_number, temp_delay);
+    printf("Client packet with seq number: %u delayed for %u seconds\n", ctx -> args -> client_packet.hd.seq_number, DELAY_TIME);
     delay_packet(DELAY_TIME);
-    send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
+    send_packet(ctx -> args -> server_sockfd, temp_packet, &ctx -> args -> server_addr_struct);
 
     printf("Client packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
     return NULL;
@@ -600,9 +599,9 @@ void *init_server_delay_thread(void *ptr)
     temp_packet          = &ctx -> args -> server_packet;
     temp_delay           = ctx -> args -> server_delay_rate;
 
-    printf("Server packet with seq number: %u delayed\n", ctx -> args -> server_packet.hd.seq_number);
+    printf("Server packet with seq number: %u delayed for %u seconds\n", ctx -> args -> server_packet.hd.seq_number, DELAY_TIME);
     delay_packet(DELAY_TIME);
-    send_packet(ctx -> args -> client_sockfd, temp_packet, &temp_packet->hd.dst_ip);
+    send_packet(ctx -> args -> client_sockfd, temp_packet, &ctx -> args -> client_addr_struct);
 
     printf("Server packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
     return NULL;
