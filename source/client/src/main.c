@@ -15,6 +15,8 @@ enum main_application_states
     STATE_CREATE_RECV_THREAD,
     STATE_CONNECT_SOCKET,
     STATE_READ_FROM_KEYBOARD,
+    STATE_CHECK_WINDOW,
+    STATE_ADD_PACKET_TO_BUFFER,
     STATE_ADD_PACKET_TO_WINDOW,
     STATE_CHECK_WINDOW_THREAD,
     STATE_SEND_MESSAGE,
@@ -40,6 +42,8 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
 static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_error *err);
+static int check_window_handler(struct fsm_context *context, struct fsm_error *err);
+static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_error *err);
 static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_window_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_message_handler(struct fsm_context *context, struct fsm_error *err);
@@ -68,7 +72,8 @@ typedef struct arguments
     struct sockaddr_storage server_addr_struct, client_addr_struct;
     struct sent_packet      *window;
     pthread_t               recv_thread;
-    struct packet           temp_packet;
+    struct packet           temp_packet, temp_message;
+    char                    *temp_buffer, *buffer;
 } arguments;
 
 
@@ -93,9 +98,11 @@ int main(int argc, char **argv)
             {STATE_CREATE_WINDOW,           STATE_CREATE_RECV_THREAD,   create_recv_thread_handler},
             {STATE_CREATE_RECV_THREAD,      STATE_CONNECT_SOCKET,       connect_socket_handler},
             {STATE_CONNECT_SOCKET,          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
-            {STATE_READ_FROM_KEYBOARD,      STATE_ADD_PACKET_TO_WINDOW, add_packet_to_window_handler},
+            {STATE_READ_FROM_KEYBOARD,      STATE_CHECK_WINDOW, check_window_handler},
+            {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_WINDOW, add_packet_to_window_handler},
+            {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_BUFFER, add_packet_to_buffer_handler},
             {STATE_ADD_PACKET_TO_WINDOW,    STATE_SEND_MESSAGE,          send_message_handler},
-            {STATE_ADD_PACKET_TO_WINDOW,    STATE_CHECK_WINDOW_THREAD,  check_window_thread_handler},
+//            {STATE_ADD_PACKET_TO_WINDOW,    STATE_CHECK_WINDOW_THREAD,  check_window_thread_handler},
             {STATE_CHECK_WINDOW_THREAD,     STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
             {STATE_SEND_MESSAGE,             STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
             {STATE_READ_FROM_KEYBOARD,      STATE_CLEANUP,              cleanup_handler},
@@ -243,22 +250,48 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 {
     struct fsm_context *ctx;
     ctx = context;
-    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    SET_TRACE(context, "", "STATE_READ_FROM_KEYBOARD");
     while (!exit_flag)
     {
-        char *buffer = NULL;
 
-        read_keyboard(&buffer, 500);
-        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                         ctx -> args -> window, buffer);
+        read_keyboard(&ctx -> args -> temp_buffer, 500);
+        return STATE_CHECK_WINDOW;
+//        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+//                         ctx -> args -> window, ctx -> args -> temp_buffer);
     }
 
     return STATE_CLEANUP;
 }
 
-static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_error *err)
+static int check_window_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_CHECK_WINDOW");
+
+    if (is_window_available)
+    {
+        return STATE_ADD_PACKET_TO_WINDOW;
+    }
+
+    return STATE_ADD_PACKET_TO_BUFFER;
+}
+
+static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_error *err)
 {
 
+}
+
+static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_ADD_PACKET_TO_WINDOW");
+
+    create_data_packet(&ctx -> args -> temp_message, ctx -> args -> window, ctx -> args -> temp_buffer);
+    add_packet_to_window(ctx -> args -> window, &ctx -> args -> temp_message);
+
+    return STATE_SEND_MESSAGE;
 }
 
 static int check_window_thread_handler(struct fsm_context *context, struct fsm_error *err)
@@ -272,8 +305,11 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
     ctx = context;
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
-    read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                         ctx -> args -> window, &ctx -> args -> temp_packet);
+    if (send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                    ctx -> args -> window, &ctx -> args -> temp_message) == -1)
+    {
+        return STATE_ERROR;
+    }
 
     return STATE_READ_FROM_KEYBOARD;
 }
@@ -376,6 +412,8 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                          ctx -> args -> window, &ctx -> args -> temp_packet );
+
+//    add_packet_to_window(ctx -> args -> window, &ctx -> args -> temp_packet);
 
     return STATE_LISTEN;
 }

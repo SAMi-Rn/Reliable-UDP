@@ -313,5 +313,6 @@ int valid_connection(struct sockaddr_storage *addr)
 
 int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)
 {
+    printf("the acks: e: %u got: %u\n", expected_ack_number, ack_number);
     return expected_ack_number == ack_number ? TRUE : FALSE;
 }
