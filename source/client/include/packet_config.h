@@ -59,6 +59,7 @@ uint32_t            previous_data_size(struct sent_packet *window);
 int                 add_connection(struct sockaddr_storage *addr);
 int                 valid_connection(struct sockaddr_storage *addr);
 int                 check_ack_number(uint32_t expected_ack_number, uint32_t ack_number);
+int                 previous_index(struct sent_packet *window);
 
 
 #endif //CLIENT_PACKET_CONFIG_H

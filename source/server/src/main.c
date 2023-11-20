@@ -11,11 +11,9 @@ enum application_states
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
     STATE_BIND_SOCKET,
-    STATE_CREATE_WINDOW,
     STATE_WAIT,
     STATE_CHECK_SEQ_NUMBER,
     STATE_CHECK_FLAGS,
-    STATE_REMOVE_FROM_WINDOW,
     STATE_SEND_PACKET,
     STATE_UPDATE_SEQ_NUMBER,
     STATE_CLEANUP,
@@ -27,11 +25,8 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
-static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int wait_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err);
-static int check_flags_handler(struct fsm_context *context, struct fsm_error *err);
-static int remove_from_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int update_seq_num_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
@@ -42,16 +37,12 @@ static int                      setup_signal_handler(struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
-void *init_recv_fucntion(void *ptr);
-
 typedef struct arguments
 {
     int                     sockfd;
-    uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct;
-    struct sent_packet      *window;
     struct packet           temp_packet;
     uint32_t                expected_seq_number;
     pthread_t               recv_thread;
@@ -72,34 +63,29 @@ int main(int argc, char **argv)
     };
 
     static struct client_fsm_transition transitions[] = {
-            {FSM_INIT,                  STATE_PARSE_ARGUMENTS,     parse_arguments_handler},
-            {STATE_PARSE_ARGUMENTS,     STATE_HANDLE_ARGUMENTS,    handle_arguments_handler},
-            {STATE_HANDLE_ARGUMENTS,    STATE_CONVERT_ADDRESS,     convert_address_handler},
-            {STATE_CONVERT_ADDRESS,     STATE_CREATE_SOCKET,       create_socket_handler},
-            {STATE_CREATE_SOCKET,       STATE_BIND_SOCKET,         bind_socket_handler},
-            {STATE_BIND_SOCKET,         STATE_CREATE_WINDOW,       create_window_handler},
-            {STATE_CREATE_WINDOW,       STATE_WAIT,                wait_handler},
-            {STATE_WAIT,                STATE_CHECK_SEQ_NUMBER,       check_seq_number_handler},
-            {STATE_CHECK_SEQ_NUMBER,       STATE_SEND_PACKET,         send_packet_handler},
-            {STATE_CHECK_SEQ_NUMBER,       STATE_WAIT,         wait_handler },
-            {STATE_CHECK_FLAGS,         STATE_SEND_PACKET,         send_packet_handler},
-            {STATE_CHECK_FLAGS,         STATE_REMOVE_FROM_WINDOW,  remove_from_window_handler},
-            {STATE_REMOVE_FROM_WINDOW, STATE_WAIT,                 wait_handler},
-            {STATE_SEND_PACKET,         STATE_UPDATE_SEQ_NUMBER,                update_seq_num_handler},
-            {STATE_UPDATE_SEQ_NUMBER,         STATE_WAIT,                wait_handler},
-            {STATE_ERROR,               STATE_CLEANUP,             cleanup_handler},
-            {STATE_PARSE_ARGUMENTS,     STATE_ERROR,               error_handler},
-            {STATE_HANDLE_ARGUMENTS,    STATE_ERROR,               error_handler},
-            {STATE_CONVERT_ADDRESS,     STATE_ERROR,               error_handler},
-            {STATE_CREATE_SOCKET,       STATE_ERROR,               error_handler},
-            {STATE_BIND_SOCKET,         STATE_ERROR,               error_handler},
-            {STATE_CREATE_WINDOW,       STATE_ERROR,               error_handler},
-            {STATE_WAIT,                STATE_ERROR,               error_handler},
-            {STATE_CHECK_SEQ_NUMBER,       STATE_ERROR,               error_handler},
-            {STATE_CHECK_FLAGS,         STATE_ERROR,               error_handler},
-            {STATE_REMOVE_FROM_WINDOW,  STATE_ERROR,               error_handler},
-            {STATE_SEND_PACKET,         STATE_ERROR,               error_handler},
-            {STATE_CLEANUP,             FSM_EXIT,                  NULL},
+            {FSM_INIT,                  STATE_PARSE_ARGUMENTS,      parse_arguments_handler},
+            {STATE_PARSE_ARGUMENTS,     STATE_HANDLE_ARGUMENTS,     handle_arguments_handler},
+            {STATE_HANDLE_ARGUMENTS,    STATE_CONVERT_ADDRESS,      convert_address_handler},
+            {STATE_CONVERT_ADDRESS,     STATE_CREATE_SOCKET,        create_socket_handler},
+            {STATE_CREATE_SOCKET,       STATE_BIND_SOCKET,          bind_socket_handler},
+            {STATE_BIND_SOCKET,         STATE_WAIT,                 wait_handler},
+            {STATE_WAIT,                STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
+            {STATE_CHECK_SEQ_NUMBER,    STATE_SEND_PACKET,          send_packet_handler},
+            {STATE_CHECK_SEQ_NUMBER,    STATE_WAIT,                 wait_handler },
+            {STATE_CHECK_FLAGS,         STATE_SEND_PACKET,          send_packet_handler},
+            {STATE_SEND_PACKET,        STATE_UPDATE_SEQ_NUMBER,     update_seq_num_handler},
+            {STATE_UPDATE_SEQ_NUMBER,  STATE_WAIT,                  wait_handler},
+            {STATE_ERROR,              STATE_CLEANUP,               cleanup_handler},
+            {STATE_PARSE_ARGUMENTS,    STATE_ERROR,                 error_handler},
+            {STATE_HANDLE_ARGUMENTS,   STATE_ERROR,                 error_handler},
+            {STATE_CONVERT_ADDRESS,    STATE_ERROR,                 error_handler},
+            {STATE_CREATE_SOCKET,      STATE_ERROR,                 error_handler},
+            {STATE_BIND_SOCKET,        STATE_ERROR,                 error_handler},
+            {STATE_WAIT,               STATE_ERROR,                 error_handler},
+            {STATE_CHECK_SEQ_NUMBER,   STATE_ERROR,                 error_handler},
+            {STATE_CHECK_FLAGS,        STATE_ERROR,                 error_handler},
+            {STATE_SEND_PACKET,        STATE_ERROR,                 error_handler},
+            {STATE_CLEANUP,            FSM_EXIT,                    NULL},
     };
 
     fsm_run(&context, &err, 0, 0 , transitions);
@@ -115,7 +101,7 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
     if (parse_arguments(ctx -> argc, ctx -> argv,
                         &ctx -> args -> server_addr, &ctx -> args -> client_addr,
                         &ctx -> args -> server_port_str, &ctx -> args -> client_port_str,
-                        &ctx -> args -> window_size, err) != 0)
+                        err) != 0)
     {
         return STATE_ERROR;
     }
@@ -175,27 +161,9 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in bind socket", "STATE_BIND_SOCKET");
-    if (socket_bind(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, err))
+    if (socket_bind(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, err))
     {
         return STATE_ERROR;
-    }
-
-    return STATE_CREATE_WINDOW;
-}
-
-static int create_window_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in create window", "STATE_CREATE_WINDOW");
-    if (create_window(&ctx -> args -> window, ctx -> args -> window_size) != 0)
-    {
-        return STATE_ERROR;
-    }
-
-    for (int i = 0; i < 5; i++)
-    {
-        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
     }
 
     return STATE_WAIT;
@@ -207,11 +175,10 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     ssize_t result;
 
     ctx = context;
-    result = 0;
     SET_TRACE(context, "", "STATE_LISTEN_SERVER");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet);
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -237,49 +204,6 @@ static int check_seq_number_handler(struct fsm_context *context, struct fsm_erro
     return STATE_WAIT;
 }
 
-static int check_flags_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    int result;
-
-    ctx = context;
-    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
-
-    result = read_flags(ctx -> args -> temp_packet.hd.flags);
-
-    if (result == ESTABLISH_HANDSHAKE || result == SEND_HANDSHAKE_ACK || result == SEND_ACK)
-    {
-        return STATE_SEND_PACKET;
-    }
-    else if (result == RECV_ACK)
-    {
-
-    }
-
-    return STATE_SEND_PACKET;
-}
-
-static int remove_from_window_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
-//    while (!exit_flag)
-//    {
-//        char *buffer = NULL;
-//
-//        read_keyboard(&buffer, 500);
-//        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-//                         ctx -> args -> window, buffer);
-//    }
-//    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, ctx -> args -> window))
-//    {
-//        return STATE_ERROR;
-//    }
-
-    return STATE_WAIT;
-}
-
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
@@ -287,7 +211,7 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                             &ctx -> args -> temp_packet);
+                             &ctx -> args -> temp_packet, err);
 
     return STATE_UPDATE_SEQ_NUMBER;
 }
@@ -317,13 +241,7 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     {
         printf("close socket error");
     }
-//    globfree(&ctx -> args -> glob_result);
-//    for (int i = 0; i < ctx -> args -> window_size; i++)
-//    {
-//        free(ctx -> args -> window + i * sizeof(sent_packet));
-//    }
 
-//    free(ctx -> args -> window);
     return FSM_EXIT;
 }
 
@@ -334,17 +252,3 @@ static int error_handler(struct fsm_context *context, struct fsm_error *err)
 
     return STATE_CLEANUP;
 }
-
-void *init_recv_fucntion(void *ptr)
-{
-    struct fsm_context *ctx = (struct fsm_context*) ptr;
-
-    while (!exit_flag)
-    {
-        printf("thread that reads packets\n");
-//        receive_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> window);
-    }
-
-    return NULL;
-}
-

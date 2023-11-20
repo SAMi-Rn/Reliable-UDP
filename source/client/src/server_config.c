@@ -36,17 +36,17 @@ int read_keyboard(char **buffer, uint32_t buffer_size) {
     *buffer = (char *) malloc(strlen(line));
     strcpy(*buffer, line);
 
-//    uint32_t size = buffer_size - strlen(*buffer) - 1;
+//    uint32_t size = buffer_size - strlen(*temp_buffer) - 1;
 
 //    if ((size_t)read > size) {
 //        free(line);
 //        return -1;
 //    }
 //
-//    strncat(*buffer, line, read - 1);
+//    strncat(*temp_buffer, line, read - 1);
 //
 //    free(line);
-//    *buffer[buffer_size - 1] = '\0';
+//    *temp_buffer[buffer_size - 1] = '\0';
 
     return 0;
 }

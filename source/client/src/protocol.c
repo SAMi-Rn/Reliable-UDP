@@ -140,6 +140,7 @@ int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packe
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -154,6 +155,7 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_p
     packet_to_send.hd.window_size       = window_size;
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -168,6 +170,7 @@ int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.window_size       = window_size;
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -183,6 +186,7 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -198,6 +202,7 @@ int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_pack
     strcpy(packet_to_send.data, data);
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -212,6 +217,7 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.window_size       = window_size;
 
     send_packet(sockfd, addr, window, &packet_to_send);
+    add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
@@ -266,4 +272,27 @@ int create_flags(uint8_t flags)
     }
 
     return UNKNOWN_FLAG;
+}
+
+int create_data_packet(struct packet *pt, struct sent_packet *window, char *data)
+{
+    struct packet packet_to_send;
+
+    packet_to_send.hd.seq_number        = create_sequence_number(previous_seq_number(window), previous_data_size(window));
+    packet_to_send.hd.ack_number        = create_ack_number(previous_ack_number(window), 0);
+    packet_to_send.hd.flags             = PSHACK;
+    packet_to_send.hd.window_size       = window_size;
+    strcpy(packet_to_send.data, data);
+
+    printf("seq number: %u\n", packet_to_send.hd.seq_number);
+    printf("ack number: %u\n", packet_to_send.hd.ack_number);
+    printf("window number: %u\n", packet_to_send.hd.window_size);
+    printf("flags: %u\n", packet_to_send.hd.flags);
+    printf("time: %ld\n", packet_to_send.hd.tv.tv_sec);
+    printf("data: %s\n\n\n\n", packet_to_send.data);
+
+    *pt = packet_to_send;
+    add_packet_to_window(window, &packet_to_send);
+
+    return 0;
 }
