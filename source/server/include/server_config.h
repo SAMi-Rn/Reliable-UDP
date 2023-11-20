@@ -16,7 +16,7 @@
 #include "protocol.h"
 
 int     socket_create(int domain, int type, int protocol, struct fsm_error *err);
-//int     socket_connect(int sockfd, struct sockaddr_storage *server_addr_struct, in_port_t server_port, struct fsm_error *err);
+int     socket_connect(int sockfd, struct sockaddr_storage *server_addr_struct, in_port_t server_port, struct fsm_error *err);
 int     socket_close(int sockfd, struct fsm_error *err);
 int     convert_address(const char *address, struct sockaddr_storage *addr,
                         in_port_t port, struct fsm_error *err);

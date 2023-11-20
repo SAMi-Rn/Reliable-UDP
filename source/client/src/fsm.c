@@ -1,11 +1,11 @@
 #include "fsm.h"
 
 static fsm_state_func fsm_transition(const struct fsm_context *context,
-                                     int from_id, int to_id, const struct client_fsm_transition transitions[]);
+                                     int from_id, int to_id, const struct fsm_transition transitions[]);
 
 int fsm_run(struct fsm_context *context, struct fsm_error *err,
             int *from_state, int *to_state,
-            const struct client_fsm_transition transitions[])
+            const struct fsm_transition transitions[])
 {
     int from_id, to_id;
 
@@ -33,9 +33,9 @@ int fsm_run(struct fsm_context *context, struct fsm_error *err,
 
 
 static fsm_state_func fsm_transition(const struct fsm_context *context,
-                                     int from_id, int to_id, const struct client_fsm_transition transitions[])
+                                     int from_id, int to_id, const struct fsm_transition transitions[])
 {
-    const struct client_fsm_transition *transition;
+    const struct fsm_transition *transition;
 
     transition = &transitions[0];
 

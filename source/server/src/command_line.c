@@ -169,7 +169,7 @@ void usage(const char *program_name)
     fputs("  -p <value>             Option 'p' (required) with value, Sets the Port\n", stderr);
 }
 
-int                 handle_arguments(const char *binary_name, const char *server_addr,
+int handle_arguments(const char *binary_name, const char *server_addr,
                                      const char *client_addr, const char *server_port_str,
                                      const char *client_port_str, in_port_t *server_port,
                                      in_port_t *client_port, struct fsm_error *err)
