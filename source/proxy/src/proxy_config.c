@@ -77,6 +77,7 @@ int random_number(void)
 
 int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
 {
+    printf("delay: %u drop %u\n", delay_rate, drop_rate);
     if (drop_rate > 0)
     {
         if (calculate_drop(drop_rate))

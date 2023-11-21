@@ -133,9 +133,19 @@ int valid_connection(struct sockaddr_storage *addr)
 
 int check_seq_number(uint32_t seq_number, uint32_t expected_seq_number)
 {
-    return seq_number <= expected_seq_number ? TRUE : FALSE;
+    printf("expected: %u\n", expected_seq_number);
+    return check_if_equal(seq_number, expected_seq_number) || check_if_less(seq_number, expected_seq_number);
 }
 
+int check_if_equal(uint32_t seq_number, uint32_t expected_seq_number)
+{
+    return seq_number == expected_seq_number ? TRUE : FALSE;
+}
+
+int check_if_less(uint32_t seq_number, uint32_t expected_seq_number)
+{
+    return seq_number < expected_seq_number ? TRUE : FALSE;
+}
 uint32_t update_expected_seq_number(uint32_t seq_number, uint32_t data_size)
 {
     printf("expected: %u\n", seq_number + data_size);
