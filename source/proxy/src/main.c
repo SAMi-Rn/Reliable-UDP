@@ -516,8 +516,8 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
     {
         read_keyboard(&ctx->args->client_drop_rate,&ctx->args->client_delay_rate,
                       &ctx->args->server_drop_rate, &ctx->args->server_delay_rate );
-        return STATE_UPDATE_LOSSINESS;
     }
+
     return FSM_EXIT;
 }
 
@@ -560,9 +560,6 @@ void *init_keyboard_thread(void *ptr)
 
     static struct fsm_transition transitions[] = {
             {FSM_INIT,                          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
-//            {STATE_READ_FROM_KEYBOARD,          STATE_UPDATE_LOSSINESS,     update_lossiness_handler},
-//            {STATE_UPDATE_LOSSINESS,            STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
-            {STATE_READ_FROM_KEYBOARD,          STATE_ERROR,                error_handler},
             {STATE_READ_FROM_KEYBOARD,          FSM_EXIT,                   NULL},
             {STATE_ERROR,                       FSM_EXIT,                   NULL},
     };
