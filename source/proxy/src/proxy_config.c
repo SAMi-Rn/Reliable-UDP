@@ -156,12 +156,13 @@ socklen_t size_of_address(struct sockaddr_storage *addr)
     return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 }
 
-int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay) {
+void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay) {
 //    char *line = NULL;
 //    size_t len = 0;
 //    ssize_t read;
     int first_menu;
     int second_menu;
+    int third_menu;
     char menu[100];
     snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
                                   "1. Client Losiness:\n"
@@ -169,8 +170,7 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                                   "3. Exit:\n"
                                   "Enter your Answer: ");
 
-    do
-    {
+    do {
         printf("%s\n", menu);
         first_menu = read_menu(3);
         switch (first_menu)
@@ -194,8 +194,7 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                                 printf("Client's Drop Rate value should be between 0-100!\n");
                                 break;
                             }
-                            *client_drop = drop;
-                            second_menu = 3;
+                            *client_drop = (uint8_t) drop;
                             break;
                         case 2:
                             printf("Enter Client's Delay Rate :");
@@ -205,11 +204,9 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                                 printf("Client's Delay Rate value should be between 0-100!\n");
                                 break;
                             }
-                            *client_delay = delay;
-                            second_menu = 3;
+                            *client_delay = (uint8_t) delay;
                             break;
                         case 3:
-                            second_menu = 3;
                             break;
                         case -1:
                             printf("It is not valid, try again\n");
@@ -218,6 +215,7 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                     }
                 }
                 while(second_menu != 3);
+                break;
             case 2:
                 do
                 {
@@ -225,8 +223,8 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                     printf("1. Drop Rate: \n");
                     printf("2. Delay Rate: \n");
                     printf("3. Back \n");
-                    second_menu = read_menu(3);
-                    switch (second_menu)
+                    third_menu = read_menu(3);
+                    switch (third_menu)
                     {
                         case 1:
                             printf("Enter Server's Drop Rate :");
@@ -236,8 +234,7 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                                 printf("Server's Drop Rate value should be between 0-100!\n");
                                 break;
                             }
-                            *server_drop = drop;
-                            second_menu = 3;
+                            *server_drop = (uint8_t) drop;
                             break;
 
                         case 2:
@@ -248,31 +245,27 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
                                 printf("Server's Delay Rate value should be between 0-100!\n");
                                 break;
                             }
-                            *server_delay = delay;
-                            second_menu = 3;
+                            *server_delay = (uint8_t) delay;
                             break;
 
                         case 3:
-                            second_menu = 3;
                             break;
                         case -1:
                             printf("It is not valid, try again\n");
+                            break;
                         default:
                             break;
                     }
-                }
-                while(second_menu != 3);
+                }while(third_menu != 3);
+                break;
             case 3:
-                first_menu = 3;
-                return 0;
+                return;
             case -1:
                 printf("It is not valid, try again\n");
             default:
                 break;
         }
-    }
-    while (first_menu != 3);
-
+    } while (1);
     /*
      * User entered C (Client)
      *      Enter B to go back, D for drop, L for delay
@@ -290,7 +283,7 @@ int read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_d
 //    strcpy(*buffer, line);
 
 
-    return 0;
+
 }
 
 int read_menu(int upperbound)
