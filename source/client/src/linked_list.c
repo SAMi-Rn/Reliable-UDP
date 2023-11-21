@@ -4,7 +4,8 @@ void init_list(struct node **head, char *data)
 {
     struct node *next_node = NULL;
 
-    next_node = (struct node *) malloc(sizeof(struct node *));
+    next_node = (struct node *) malloc(sizeof(struct node));
+//    memset(next_node->data, 0, sizeof(next_node->data));
 
     strcpy(next_node -> data, data);
     next_node -> next = NULL;
@@ -19,7 +20,7 @@ void push(struct node *head, char *data)
         current = current -> next;
     }
 
-    current -> next = (struct node *) malloc(sizeof(struct node *));
+    current -> next = (struct node *) malloc(sizeof(struct node));
     strcpy(current -> next -> data, data);
     current -> next -> next = NULL;
 }

@@ -52,6 +52,8 @@ int                 add_connection(struct sockaddr_storage *addr);
 int                 valid_connection(struct sockaddr_storage *addr);
 int                 check_seq_number(uint32_t seq_number, uint32_t expected_seq_number);
 uint32_t            update_expected_seq_number(uint32_t seq_number, uint32_t data_size);
+int check_if_equal(uint32_t seq_number, uint32_t expected_seq_number);
+int check_if_less(uint32_t seq_number, uint32_t expected_seq_number);
 
 
 #endif //CLIENT_PACKET_CONFIG_H

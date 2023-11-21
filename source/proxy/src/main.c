@@ -352,6 +352,7 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CLIENT_DELAY_PACKET");
+    printf("Client packet with seq number: %u delayed\n", ctx -> args -> client_packet.hd.seq_number);
     ctx -> args -> num_of_threads++;
     temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)

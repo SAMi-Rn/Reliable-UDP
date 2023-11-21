@@ -222,7 +222,7 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     {
         return STATE_ERROR;
     }
-//
+
 //    for (int i = 0; i < ctx -> args -> window_size; i++)
 //    {
 //        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
@@ -280,10 +280,10 @@ static int check_window_handler(struct fsm_context *context, struct fsm_error *e
     ctx = context;
     SET_TRACE(context, "", "STATE_CHECK_WINDOW");
 
-//    if (is_window_available)
-//    {
-//        return STATE_ADD_PACKET_TO_WINDOW;
-//    }
+    if (is_window_available)
+    {
+        return STATE_ADD_PACKET_TO_WINDOW;
+    }
 
     return STATE_ADD_PACKET_TO_BUFFER;
 }

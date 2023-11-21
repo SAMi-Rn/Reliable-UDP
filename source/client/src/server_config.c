@@ -17,6 +17,7 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
 
 int read_keyboard(char **buffer, uint32_t buffer_size) {
     char *line = NULL;
+//char line[512];
     size_t len = 0;
     ssize_t read;
 
@@ -27,7 +28,8 @@ int read_keyboard(char **buffer, uint32_t buffer_size) {
         read = getline(&line, &len, stdin);
     }
 
-    *buffer = (char *) malloc(strlen(line));
+    printf("data: %s", line);
+    *buffer = (char *) malloc(strlen(line) + 1);
     strcpy(*buffer, line);
 
     return 0;
