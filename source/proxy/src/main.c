@@ -94,6 +94,7 @@ typedef struct arguments
 
 int main(int argc, char **argv)
 {
+
     struct fsm_error err;
     struct arguments args = {
             .client_delay_rate  = 101,
