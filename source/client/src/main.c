@@ -262,8 +262,6 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 
         read_keyboard(&ctx -> args -> temp_buffer, 500);
         return STATE_CHECK_WINDOW;
-//        send_data_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-//                         ctx -> args -> window, ctx -> args -> temp_buffer);
     }
 
     return STATE_CLEANUP;
