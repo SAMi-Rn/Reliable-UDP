@@ -2,6 +2,7 @@
 #include "protocol.h"
 #include "server_config.h"
 #include "command_line.h"
+#include "linked_list.h"
 #include <pthread.h>
 
 #define TIMER_TIME 1
@@ -67,6 +68,7 @@ static volatile sig_atomic_t exit_flag = 0;
 
 void *init_recv_function(void *ptr);
 void *init_timer_function(void *ptr);
+void *init_window_checker_function(void *ptr);
 
 typedef struct arguments
 {
@@ -79,6 +81,7 @@ typedef struct arguments
     pthread_t               recv_thread, *thread_pool;
     struct packet           temp_packet, temp_message;
     char                    *temp_buffer, *buffer;
+    struct node             *head;
 } arguments;
 
 
@@ -86,7 +89,9 @@ typedef struct arguments
 int main(int argc, char **argv)
 {
     struct fsm_error err;
-    struct arguments args;
+    struct arguments args = {
+            .head = NULL
+    };
     struct fsm_context context = {
             .argc = argc,
             .argv = argv,
@@ -106,6 +111,8 @@ int main(int argc, char **argv)
             {STATE_READ_FROM_KEYBOARD,      STATE_CHECK_WINDOW, check_window_handler},
             {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_WINDOW, add_packet_to_window_handler},
             {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_BUFFER, add_packet_to_buffer_handler},
+            {STATE_ADD_PACKET_TO_BUFFER,      STATE_READ_FROM_KEYBOARD, read_from_keyboard_handler},
+            {STATE_ADD_PACKET_TO_BUFFER,      STATE_CHECK_WINDOW_THREAD, check_window_thread_handler},
             {STATE_ADD_PACKET_TO_WINDOW,    STATE_SEND_MESSAGE,          send_message_handler},
 //            {STATE_ADD_PACKET_TO_WINDOW,    STATE_CHECK_WINDOW_THREAD,  check_window_thread_handler},
             {STATE_CHECK_WINDOW_THREAD,     STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
@@ -215,11 +222,11 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     {
         return STATE_ERROR;
     }
-
-    for (int i = 0; i < 5; i++)
-    {
-        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
-    }
+//
+//    for (int i = 0; i < ctx -> args -> window_size; i++)
+//    {
+//        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
+//    }
 
     return STATE_CREATE_RECV_THREAD;
 }
@@ -273,17 +280,29 @@ static int check_window_handler(struct fsm_context *context, struct fsm_error *e
     ctx = context;
     SET_TRACE(context, "", "STATE_CHECK_WINDOW");
 
-    if (is_window_available)
-    {
-        return STATE_ADD_PACKET_TO_WINDOW;
-    }
+//    if (is_window_available)
+//    {
+//        return STATE_ADD_PACKET_TO_WINDOW;
+//    }
 
     return STATE_ADD_PACKET_TO_BUFFER;
 }
 
 static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_error *err)
 {
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_ADD_PACKET_TO_BUFFER");
 
+    if (ctx -> args -> head == NULL)
+    {
+        init_list(&ctx -> args -> head, ctx -> args -> temp_buffer);
+        return STATE_CHECK_WINDOW_THREAD;
+    }
+
+    push(ctx -> args -> head, ctx -> args -> temp_buffer);
+
+    return STATE_READ_FROM_KEYBOARD;
 }
 
 static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_error *err)
@@ -300,7 +319,13 @@ static int add_packet_to_window_handler(struct fsm_context *context, struct fsm_
 
 static int check_window_thread_handler(struct fsm_context *context, struct fsm_error *err)
 {
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_CHECK_WINDOW_THREAD");
 
+    init_window_checker_function((void *) ctx);
+
+    return STATE_READ_FROM_KEYBOARD;
 }
 
 static int send_message_handler(struct fsm_context *context, struct fsm_error *err)
@@ -379,7 +404,7 @@ static int listen_handler(struct fsm_context *context, struct fsm_error *err)
     SET_TRACE(context, "", "STATE_LISTEN_SERVER");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet);
+        result = receive_packet(ctx->args->sockfd, ctx -> args -> window, &ctx -> args -> temp_packet);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -488,6 +513,29 @@ void *init_timer_function(void *ptr)
             send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
                         &ctx->args->window[index].pt);
             counter++;
+        }
+    }
+
+    return NULL;
+}
+
+void *init_window_checker_function(void *ptr)
+{
+    struct fsm_context *ctx = (struct fsm_context*) ptr;
+    struct fsm_error *err = NULL;
+
+    while (ctx -> args -> head != NULL)
+    {
+        if (is_window_available)
+        {
+            struct packet pt;
+
+            create_data_packet(&pt, ctx -> args -> window, ctx -> args -> head->data);
+            send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                        ctx -> args -> window, &pt);
+            create_timer_thread_handler(ctx, err);
+            printf("sent packet with seq number %u\n", pt.hd.seq_number);
+            pop(&ctx -> args -> head);
         }
     }
 

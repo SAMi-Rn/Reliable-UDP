@@ -48,7 +48,7 @@ int                 first_packet_ring_buffer(struct sent_packet *window);
 int                 first_unacked_ring_buffer(struct sent_packet *window);
 int                 send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
 int                 add_packet_to_window(struct sent_packet *window, struct packet *pt);
-int                 receive_packet(int sockfd, struct packet *pt);
+int                 receive_packet(int sockfd, struct sent_packet *window, struct packet *pt);
 int                 remove_packet_from_window(struct sent_packet *window, struct packet *pt);
 uint32_t            create_second_handshake_seq_number(void);
 uint32_t            create_ack_number(uint32_t previous_ack_number, uint32_t data_size);

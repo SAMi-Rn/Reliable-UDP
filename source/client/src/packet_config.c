@@ -4,7 +4,7 @@
 int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
 {
     window_size = cmd_line_window_size;
-    *window = (sent_packet*)malloc(sizeof(sent_packet) * window_size);
+    *window = malloc(sizeof(sent_packet) * window_size);
 
     if (window == NULL)
     {
@@ -13,14 +13,16 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
 
     for (int i = 0; i < window_size; i++)
     {
-        window[i] = (sent_packet*)calloc(0, sizeof(sent_packet));
-//        window[i] -> is_packet_full = 1;
+        window[i] = (struct sent_packet *) calloc(0, sizeof(sent_packet));
+        window[i]->pt = (struct packet *) malloc(sizeof(packet));
+//        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
+//        window[i] -> is_packet_full = 0;
     }
 
-    for (int i = 0; i < 5; i++)
-    {
-        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_full);
-    }
+//    for (int i = 0; i < 5; i++)
+//    {
+//        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_full);
+//    }
 
     first_empty_packet      = 0;
     first_unacked_packet    = 0;
@@ -37,7 +39,7 @@ int window_empty(struct sent_packet *window)
         return 1;
     }
 
-    is_window_available = 0;
+    is_window_available = FALSE;
     return 0;
 }
 
@@ -178,7 +180,7 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
     return 0;
 }
 
-int receive_packet(int sockfd, struct packet *pt)
+int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt)
 {
 //    struct sockaddr_storage     client_addr;
 //    socklen_t                   client_addr_len;
@@ -193,14 +195,7 @@ int receive_packet(int sockfd, struct packet *pt)
 //        return -1;
 //    }
 //
-//    printf("\n\nRECEIVED:\n");
-//    printf("bytes: %zd\n", result);
-//    printf("seq number: %u\n", pt.hd.seq_number);
-//    printf("ack number: %u\n", pt.hd.ack_number);
-//    printf("window number: %u\n", pt.hd.window_size);
-//    printf("flags: %u\n", pt.hd.flags);
-//    printf("time: %ld\n", pt.hd.tv.tv_sec);
-//    printf("data: %s\n\n\n\n", pt.data);
+
 ////    if (valid_connection())
 ////    {
 ////            read_received_packet(sockfd, server_addr, window, &pt);
@@ -221,6 +216,15 @@ int receive_packet(int sockfd, struct packet *pt)
     }
     *pt = temp_pt;
 
+    printf("\n\nRECEIVED:\n");
+    printf("bytes: %zd\n", result);
+    printf("seq number: %u\n", pt->hd.seq_number);
+    printf("ack number: %u\n", pt->hd.ack_number);
+    printf("window number: %u\n", pt->hd.window_size);
+    printf("flags: %u\n", pt->hd.flags);
+    printf("time: %ld\n", pt->hd.tv.tv_sec);
+    printf("data: %s\n\n\n\n", pt->data);
+    window_empty(window);
     return 0;
 }
 

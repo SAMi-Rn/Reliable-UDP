@@ -27,26 +27,8 @@ int read_keyboard(char **buffer, uint32_t buffer_size) {
         read = getline(&line, &len, stdin);
     }
 
-//    if (read == -1) {
-//        free(line);
-//        return -1;
-//    }
-
-    printf("read: %s\nsize: %zd", line, strlen(line));
     *buffer = (char *) malloc(strlen(line));
     strcpy(*buffer, line);
-
-//    uint32_t size = buffer_size - strlen(*temp_buffer) - 1;
-
-//    if ((size_t)read > size) {
-//        free(line);
-//        return -1;
-//    }
-//
-//    strncat(*temp_buffer, line, read - 1);
-//
-//    free(line);
-//    *temp_buffer[buffer_size - 1] = '\0';
 
     return 0;
 }

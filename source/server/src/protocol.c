@@ -102,6 +102,7 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, &packet_to_send, err);
 
@@ -116,6 +117,7 @@ int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct packe
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, &packet_to_send, err);
 
@@ -130,6 +132,7 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, &packet_to_send, err);
 
@@ -159,6 +162,7 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packe
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, strlen(pt->data));
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, &packet_to_send, err);
 
@@ -186,6 +190,7 @@ int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct fsm_e
 //    packet_to_send.hd.ack_number            = create_ack_number(previous_ack_number(window), previous_data_size(window));
     packet_to_send.hd.flags                 = FINACK;
     packet_to_send.hd.window_size           = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
     send_packet(sockfd, addr, &packet_to_send, err);
     return 0;
