@@ -27,9 +27,10 @@ int read_keyboard(char **buffer, uint32_t buffer_size) {
         read = getline(&line, &len, stdin);
     }
 
-    *buffer = (char *) malloc(strlen(line));
+    *buffer = (char *) malloc(read + 1);
     strcpy(*buffer, line);
-
+    (*buffer)[read] = '\0';
+    free(line);
     return 0;
 }
 

@@ -13,8 +13,7 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
 
     for (int i = 0; i < window_size; i++)
     {
-        window[i] = (struct sent_packet *) calloc(0, sizeof(sent_packet));
-        window[i]->pt = (struct packet *) malloc(sizeof(packet));
+            (*window)[i].is_packet_full = 0;
 //        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
 //        window[i] -> is_packet_full = 0;
     }
