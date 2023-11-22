@@ -74,6 +74,7 @@ int main(int argc, char **argv)
             {STATE_CHECK_SEQ_NUMBER,    STATE_WAIT,                 wait_handler },
             {STATE_CHECK_FLAGS,         STATE_SEND_PACKET,          send_packet_handler},
             {STATE_SEND_PACKET,        STATE_UPDATE_SEQ_NUMBER,     update_seq_num_handler},
+            {STATE_SEND_PACKET,        STATE_WAIT,     wait_handler},
             {STATE_UPDATE_SEQ_NUMBER,  STATE_WAIT,                  wait_handler},
             {STATE_ERROR,              STATE_CLEANUP,               cleanup_handler},
             {STATE_PARSE_ARGUMENTS,    STATE_ERROR,                 error_handler},
@@ -213,6 +214,12 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                              &ctx -> args -> temp_packet, err);
 
+    if (check_if_less(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
+    {
+        return STATE_WAIT;
+    }
+
+    printf("%s\n", ctx -> args -> temp_packet.data);
     return STATE_UPDATE_SEQ_NUMBER;
 }
 
@@ -229,6 +236,7 @@ static int update_seq_num_handler(struct fsm_context *context, struct fsm_error 
     }
 
     ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number, strlen(ctx -> args -> temp_packet.data));
+    printf("expected: %u\n", ctx -> args -> expected_seq_number );
     return STATE_WAIT;
 }
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)

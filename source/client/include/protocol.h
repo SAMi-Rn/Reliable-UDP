@@ -38,17 +38,17 @@ enum next_state_for_packet
 };
 
 int                 read_flags(uint8_t flags);
-int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window);
-int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window);
-int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data);
-int                 send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
-int                 initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window);
+int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window, struct fsm_error *err);
+int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err);
+int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data, struct fsm_error *err);
+int                 send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err);
 int                 create_flags(uint8_t flags);
 int                 create_data_packet(struct packet *pt, struct sent_packet *window, char *data);
 

@@ -70,17 +70,18 @@ int identify_sender(struct sockaddr_storage *dest_ip,
 
 int random_number(void)
 {
-    srand(time(NULL));
-
     return rand() % 101;
 }
 
 int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
 {
+    printf("delay: %u drop %u\n", delay_rate, drop_rate);
     if (drop_rate > 0)
     {
+        printf("about to calculate drop rate\n");
         if (calculate_drop(drop_rate))
         {
+            printf("dropped\n");
             return DROP;
         }
     }

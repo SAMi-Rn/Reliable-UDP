@@ -1,27 +1,22 @@
 #include <netinet/in.h>
 #include "packet_config.h"
 
-int create_window(struct sent_packet **window, uint8_t cmd_line_window_size)
+int create_window(struct sent_packet **window, uint8_t cmd_line_window_size, struct fsm_error *err)
 {
-    window_size = cmd_line_window_size;
-    *window = malloc(sizeof(sent_packet) * window_size);
+    window_size     = cmd_line_window_size;
+    *window         = (struct sent_packet *) malloc(sizeof(struct sent_packet) * window_size + 1);
 
     if (window == NULL)
     {
+        SET_ERROR(err, strerror(errno));
         return -1;
     }
 
     for (int i = 0; i < window_size; i++)
     {
-            (*window)[i].is_packet_full = 0;
-//        window[i] = (sent_packet*)malloc(sizeof(sent_packet));
-//        window[i] -> is_packet_full = 0;
+//        window[i] = malloc(sizeof(*window[i]));
+        (*window)[i].is_packet_full = 0;
     }
-
-//    for (int i = 0; i < 5; i++)
-//    {
-//        printf("in create_window: %d: %d\n", i, window[i] -> is_packet_full);
-//    }
 
     first_empty_packet      = 0;
     first_unacked_packet    = 0;
@@ -44,10 +39,6 @@ int window_empty(struct sent_packet *window)
 
 int first_packet_ring_buffer(struct sent_packet *window)
 {
-    for (int i = 0; i < window_size; i++)
-    {
-        printf("%d: %d\n", i, window[i].is_packet_full);
-    }
     if (!window[first_empty_packet].is_packet_full)
     {
         return 1;
@@ -110,34 +101,22 @@ int first_unacked_ring_buffer(struct sent_packet *window)
 
 
 int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
-                struct packet *pt)
+                struct packet *pt, struct fsm_error *err)
 {
     ssize_t result;
 
-    for (int i = 0; i < 5; i++)
-    {
-        printf("before: %d: %d\n", i, window[i].is_packet_full);
-    }
-//    add_packet_to_window(window, pt);
-    for (int i = 0; i < 5; i++)
-    {
-        printf("after: %d: %d\n", i, window[i].is_packet_full);
-    }
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
-    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
+//    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     printf("\n\nSENDING:\n");
-    printf("bytes: %zd\n", result);
     printf("seq number: %u\n", pt->hd.seq_number);
-    printf("ack number: %u\n", pt->hd.ack_number);
-    printf("window number: %u\n", pt->hd.window_size);
     printf("flags: %u\n", pt->hd.flags);
-    printf("time: %ld\n", pt->hd.tv.tv_sec);
     printf("data: %s\n\n\n\n", pt->data);
+
     if (result < 0)
     {
-        printf("error: %d\n", errno);
+        SET_ERROR(err, strerror(errno));
         return -1;
     }
 
@@ -179,57 +158,35 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
     return 0;
 }
 
-int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt)
+int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
-//    struct sockaddr_storage     client_addr;
-//    socklen_t                   client_addr_len;
-//    struct packet               pt;
-//    ssize_t                     result;
-//
-//    client_addr_len = sizeof(client_addr);
-//    result = recvfrom(sockfd, &pt, sizeof(pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
-//    if (result == -1)
-//    {
-//        printf("Error: %s\n", strerror(errno));
-//        return -1;
-//    }
-//
-
-////    if (valid_connection())
-////    {
-////            read_received_packet(sockfd, server_addr, window, &pt);
-////    }
-//
-//    return 0;
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
     struct packet               temp_pt;
     ssize_t                     result;
 
-    client_addr_len = sizeof(client_addr);
-    result = recvfrom(sockfd, &temp_pt, sizeof(temp_pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+    client_addr_len     = sizeof(client_addr);
+    result              = recvfrom(sockfd, &temp_pt, sizeof(temp_pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+
     if (result == -1)
     {
-        printf("Error: %s\n", strerror(errno));
+        SET_ERROR(err, strerror(errno));
         return -1;
     }
+
     *pt = temp_pt;
 
     printf("\n\nRECEIVED:\n");
-    printf("bytes: %zd\n", result);
-    printf("seq number: %u\n", pt->hd.seq_number);
     printf("ack number: %u\n", pt->hd.ack_number);
-    printf("window number: %u\n", pt->hd.window_size);
     printf("flags: %u\n", pt->hd.flags);
-    printf("time: %ld\n", pt->hd.tv.tv_sec);
-    printf("data: %s\n\n\n\n", pt->data);
+
     window_empty(window);
+
     return 0;
 }
 
 int remove_packet_from_window(struct sent_packet *window, struct packet *pt)
 {
-    printf("expected: %u received: %u", window[first_unacked_packet].expected_ack_number, pt->hd.ack_number);
     if (window[first_unacked_packet].expected_ack_number == pt->hd.ack_number)
     {
         window[first_unacked_packet].is_packet_full = FALSE;
@@ -320,7 +277,6 @@ int valid_connection(struct sockaddr_storage *addr)
 
 int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)
 {
-    printf("the acks: e: %u got: %u\n", expected_ack_number, ack_number);
     return expected_ack_number == ack_number ? TRUE : FALSE;
 }
 
