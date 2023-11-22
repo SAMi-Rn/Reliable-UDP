@@ -20,7 +20,7 @@ int     socket_connect(int sockfd, struct sockaddr_storage *server_addr_struct, 
 int     socket_close(int sockfd, struct fsm_error *err);
 int     convert_address(const char *address, struct sockaddr_storage *addr,
                         in_port_t port, struct fsm_error *err);
-int     read_keyboard(char **buffer, uint32_t buffer_size);
+int     read_keyboard(char **buffer, uint32_t *file_index);
 int     socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err);
 socklen_t           size_of_address(struct sockaddr_storage *addr);
 

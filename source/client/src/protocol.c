@@ -1,57 +1,13 @@
+#include <pthread.h>
 #include "protocol.h"
 
 int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window)
 {
-//    char      addr_str[INET6_ADDRSTRLEN];
-//    in_port_t net_port;
-//
-//    if(inet_ntop(addr->ss_family, addr->ss_family == AF_INET ? (void *)&(((struct sockaddr_in *)addr)->sin_addr) : (void *)&(((struct sockaddr_in6 *)addr)->sin6_addr), addr_str, sizeof(addr_str)) == NULL)
-//    {
-////        SET_ERROR(err, strerror(errno));
-//        return -1;
-//    }
-//
-//    printf("Connecting to: %s:%u\n", addr_str, port);
-//    net_port = htons(port);
-//
-//    if(addr->ss_family == AF_INET)
-//    {
-//        struct sockaddr_in *ipv4_addr;
-//        ipv4_addr = (struct sockaddr_in *)addr;
-//        ipv4_addr->sin_port = net_port;
-//        send_syn_packet(sockfd, addr, window);
-////        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in)) == -1)
-////        {
-//////            SET_ERROR(err, strerror(errno));
-////            return -1;
-////        }
-//    }
-//    else if(addr->ss_family == AF_INET6)
-//    {
-//        struct sockaddr_in6 *ipv6_addr;
-//        ipv6_addr = (struct sockaddr_in6 *)addr;
-//        ipv6_addr->sin6_port = net_port;
-//        send_syn_packet(sockfd, addr, window);
-////        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in6)) == -1)
-////        {
-//////            SET_ERROR(err, strerror(errno));
-////            return -1;
-////        }
-//    }
-//    else
-//    {
-////        SET_ERROR(err, "Address family not supported");
-//        return -1;
-//    }
-
-//    struct packet temp_packet;
+    struct packet temp_packet;
     send_syn_packet(sockfd, addr, window);
-//    receive_packet(sockfd, window, &temp_packet);
-//    remove_packet_from_window(window, &temp_packet);
-//    read_received_packet(sockfd, addr, window, &temp_packet );
-
-
-//    printf("Connected to: %s:%u\n", addr_str, port);
+    receive_packet(sockfd, window, &temp_packet);
+    remove_packet_from_window(window, &temp_packet);
+    read_received_packet(sockfd, addr, window, &temp_packet);
 
     return 0;
 }

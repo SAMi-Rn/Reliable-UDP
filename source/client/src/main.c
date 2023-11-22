@@ -73,6 +73,7 @@ void *init_window_checker_function(void *ptr);
 typedef struct arguments
 {
     int                     sockfd, num_of_threads;
+    uint32_t                file_index;
     uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
@@ -90,7 +91,8 @@ int main(int argc, char **argv)
 {
     struct fsm_error err;
     struct arguments args = {
-            .head = NULL
+            .head           = NULL,
+            .file_index     = 0
     };
     struct fsm_context context = {
             .argc = argc,
@@ -105,9 +107,10 @@ int main(int argc, char **argv)
             {STATE_CONVERT_ADDRESS,         STATE_CREATE_SOCKET,       create_socket_handler},
             {STATE_CREATE_SOCKET,           STATE_BIND_SOCKET,         bind_socket_handler},
             {STATE_BIND_SOCKET,             STATE_CREATE_WINDOW,       create_window_handler},
-            {STATE_CREATE_WINDOW,           STATE_CREATE_RECV_THREAD,   create_recv_thread_handler},
-            {STATE_CREATE_RECV_THREAD,      STATE_CONNECT_SOCKET,       connect_socket_handler},
-            {STATE_CONNECT_SOCKET,          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
+            {STATE_CREATE_WINDOW,           STATE_CONNECT_SOCKET,   connect_socket_handler},
+            {STATE_CONNECT_SOCKET,          STATE_CREATE_RECV_THREAD,   create_recv_thread_handler},
+//            {STATE_CREATE_RECV_THREAD,      STATE_CONNECT_SOCKET,       connect_socket_handler},
+            {STATE_CREATE_RECV_THREAD,          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
             {STATE_READ_FROM_KEYBOARD,      STATE_CHECK_WINDOW, check_window_handler},
             {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_WINDOW, add_packet_to_window_handler},
             {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_BUFFER, add_packet_to_buffer_handler},
@@ -228,7 +231,7 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
 //        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
 //    }
 
-    return STATE_CREATE_RECV_THREAD;
+    return STATE_CONNECT_SOCKET;
 }
 
 static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err)
@@ -243,7 +246,7 @@ static int create_recv_thread_handler(struct fsm_context *context, struct fsm_er
         return STATE_ERROR;
     }
 
-    return STATE_CONNECT_SOCKET;
+    return STATE_READ_FROM_KEYBOARD;
 }
 
 static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err)
@@ -256,7 +259,7 @@ static int connect_socket_handler(struct fsm_context *context, struct fsm_error 
         return STATE_ERROR;
     }
 
-    return STATE_READ_FROM_KEYBOARD;
+    return STATE_CREATE_RECV_THREAD;
 }
 
 static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_error *err)
@@ -266,8 +269,7 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
     SET_TRACE(context, "", "STATE_READ_FROM_KEYBOARD");
     while (!exit_flag)
     {
-
-        read_keyboard(&ctx -> args -> temp_buffer, 500);
+        read_keyboard(&ctx -> args -> temp_buffer, &ctx -> args -> file_index);
         return STATE_CHECK_WINDOW;
     }
 
@@ -340,6 +342,7 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
         return STATE_ERROR;
     }
 
+//    sleep(10);
     return STATE_CREATE_TIMER_THREAD;
 }
 
