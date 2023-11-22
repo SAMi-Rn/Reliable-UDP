@@ -269,7 +269,11 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
     SET_TRACE(context, "", "STATE_READ_FROM_KEYBOARD");
     while (!exit_flag)
     {
-        read_keyboard(&ctx -> args -> temp_buffer, &ctx -> args -> file_index);
+        if (read_keyboard(&ctx -> args -> temp_buffer, &ctx -> args -> file_index) == -1)
+        {
+            exit_flag++;
+            return STATE_CLEANUP;
+        }
         return STATE_CHECK_WINDOW;
     }
 
@@ -353,7 +357,7 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
 
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
-    SET_TRACE(context, "", "STATE_SERVER_DELAY_PACKET");
+    SET_TRACE(context, "", "STATE_CREATE_TIMER_THREAD");
     ctx -> args -> num_of_threads++;
     temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
