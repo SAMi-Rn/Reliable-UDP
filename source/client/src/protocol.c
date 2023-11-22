@@ -8,7 +8,7 @@ int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, 
     receive_packet(sockfd, window, &temp_packet);
     remove_packet_from_window(window, &temp_packet);
     read_received_packet(sockfd, addr, window, &temp_packet);
-    
+
     return 0;
 }
 
