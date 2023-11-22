@@ -72,7 +72,7 @@ void *init_window_checker_function(void *ptr);
 
 typedef struct arguments
 {
-    int                     sockfd, num_of_threads;
+    int                     sockfd, num_of_threads, is_buffered;
     uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
@@ -91,11 +91,12 @@ int main(int argc, char **argv)
     struct fsm_error err;
     struct arguments args = {
             .head           = NULL,
+            .is_buffered    = 0
     };
     struct fsm_context context = {
-            .argc = argc,
-            .argv = argv,
-            .args = &args
+            .argc           = argc,
+            .argv           = argv,
+            .args           = &args
     };
 
     static struct fsm_transition transitions[] = {
@@ -282,12 +283,12 @@ static int check_window_handler(struct fsm_context *context, struct fsm_error *e
     ctx = context;
     SET_TRACE(context, "", "STATE_CHECK_WINDOW");
 
-    if (is_window_available)
+    if (!is_window_available || ctx -> args -> is_buffered)
     {
-        return STATE_ADD_PACKET_TO_WINDOW;
+        return STATE_ADD_PACKET_TO_BUFFER;
     }
 
-    return STATE_ADD_PACKET_TO_BUFFER;
+    return STATE_ADD_PACKET_TO_WINDOW;
 }
 
 static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_error *err)
@@ -299,6 +300,7 @@ static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_
     if (ctx -> args -> head == NULL)
     {
         init_list(&ctx -> args -> head, ctx -> args -> temp_buffer);
+        ctx -> args -> is_buffered++;
         return STATE_CHECK_WINDOW_THREAD;
     }
     push(ctx -> args -> head, ctx -> args -> temp_buffer);
@@ -548,6 +550,8 @@ void *init_window_checker_function(void *ptr)
             pop(&ctx -> args -> head);
         }
     }
+
+    ctx -> args -> is_buffered = 0;
 
     return NULL;
 }

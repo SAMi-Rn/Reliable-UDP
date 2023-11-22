@@ -143,6 +143,8 @@ int check_if_less(uint32_t seq_number, uint32_t expected_seq_number)
 }
 uint32_t update_expected_seq_number(uint32_t seq_number, uint32_t data_size)
 {
-//    printf("expected: %u\n", seq_number + data_size);
+    printf("expected: %u\n", seq_number + data_size);
+    printf("seq number: %u\n", seq_number);
+    printf("data size: %u\n", data_size);
     return seq_number + data_size;
 }
