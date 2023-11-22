@@ -24,7 +24,11 @@ char line[511];
     read = 0;
     memset(line, 0, sizeof(line));
     printf("\nEnter string below [ctrl + d] to quit\n");
-    while (fgets(line, sizeof(line), stdin) == NULL)
+    if (fgets(line, sizeof(line), stdin) == NULL)
+    {
+        return -1;
+    }
+//    while (fgets(line, sizeof(line), stdin) == NULL)
     {
 //        printf("data: %s", line);
 //        if (strlen(line) > 0)
