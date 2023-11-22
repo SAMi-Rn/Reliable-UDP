@@ -7,14 +7,14 @@
 
 struct node
 {
-    char data[512];
-    struct node *next;
+    char            data[512];
+    struct node     *next;
 };
 
-void init_list(struct node **head, char *data);
-void push(struct node *head, char *data);
-void pop(struct node **head);
-void delete_tail(struct node *head);
-void print_list(struct node* head);
+void                init_list(struct node **head, char *data);
+void                push(struct node *head, char *data);
+void                pop(struct node **head);
+void                delete_tail(struct node *head);
+void                print_list(struct node* head);
 
 #endif //CLIENT_LINKED_LIST_H

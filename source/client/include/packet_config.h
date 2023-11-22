@@ -12,6 +12,8 @@
 #include "protocol.h"
 #include "server_config.h"
 
+#define DATA_SIZE 512
+
 uint8_t                     first_empty_packet;
 uint8_t                     first_unacked_packet;
 uint8_t                     is_window_available;
@@ -32,7 +34,7 @@ typedef struct header
 typedef struct packet
 {
     struct header   hd;
-    char            data[512];
+    char            data[DATA_SIZE];
 } packet;
 
 typedef struct sent_packet
@@ -42,13 +44,13 @@ typedef struct sent_packet
     uint8_t         is_packet_full;
 } sent_packet;
 
-int                 create_window(struct sent_packet **window, uint8_t window_size);
+int                 create_window(struct sent_packet **window, uint8_t window_size, struct fsm_error *err);
 int                 window_empty(struct sent_packet *window);
 int                 first_packet_ring_buffer(struct sent_packet *window);
 int                 first_unacked_ring_buffer(struct sent_packet *window);
-int                 send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt);
+int                 send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
 int                 add_packet_to_window(struct sent_packet *window, struct packet *pt);
-int                 receive_packet(int sockfd, struct sent_packet *window, struct packet *pt);
+int                 receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
 int                 remove_packet_from_window(struct sent_packet *window, struct packet *pt);
 uint32_t            create_second_handshake_seq_number(void);
 uint32_t            create_ack_number(uint32_t previous_ack_number, uint32_t data_size);

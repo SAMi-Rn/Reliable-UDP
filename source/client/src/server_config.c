@@ -15,34 +15,15 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
     return sockfd;
 }
 
-int read_keyboard(char **buffer, uint32_t *file_index) {
-//    char *line = NULL;
-char line[511];
-    size_t len = 0;
-    ssize_t read;
-
-    read = 0;
+int read_keyboard(char **buffer) {
+    char line[DATA_SIZE];
     memset(line, 0, sizeof(line));
+
     printf("\nEnter string below [ctrl + d] to quit\n");
     if (fgets(line, sizeof(line), stdin) == NULL)
     {
         return -1;
     }
-//    while (fgets(line, sizeof(line), stdin) == NULL)
-    {
-//        printf("data: %s", line);
-//        if (strlen(line) > 0)
-//        {
-//            break;
-//        }
-    }
-
-    printf("in read keyboard\ndata: %s\n", line);
-    printf("length: %lu\n", strlen(line));
-//    while(fgets(line, sizeof(line) , stdin) != NULL)
-//    {
-//        printf("%s\n", line);
-//    }
 
     *buffer = (char *) malloc(strlen(line) + 1);
     strcpy(*buffer, line);
@@ -122,7 +103,6 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
 
     if(inet_pton(AF_INET, address, &(((struct sockaddr_in *)addr)->sin_addr)) == 1)
     {
-        // IPv4 server_addr
         struct sockaddr_in *ipv4_addr;
 
         ipv4_addr           = (struct sockaddr_in *)addr;
@@ -139,7 +119,6 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
         addr_len             = sizeof(*ipv6_addr);
         ipv6_addr->sin6_port = net_port;
         vaddr                = (void *)&(((struct sockaddr_in6 *)addr)->sin6_addr);
-        // IPv6 server_addr
         addr->ss_family = AF_INET6;
     }
     else
@@ -152,60 +131,75 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
 
 }
 
-int socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err)
+int socket_bind(int sockfd, struct sockaddr_storage *addr, struct fsm_error *err)
 {
-//    char      addr_str[INET6_ADDRSTRLEN];
-//    socklen_t addr_len;
-//    void     *vaddr;
-//    in_port_t net_port;
-//
-//    net_port = htons(60000);
-//
-//    if(addr->ss_family == AF_INET)
-//    {
-//        struct sockaddr_in *ipv4_addr;
-//
-//        ipv4_addr           = (struct sockaddr_in *)addr;
-//        addr_len            = sizeof(*ipv4_addr);
-//        ipv4_addr->sin_port = net_port;
-//        vaddr               = (void *)&(((struct sockaddr_in *)addr)->sin_addr);
-//    }
-//    else if(addr->ss_family == AF_INET6)
-//    {
-//        struct sockaddr_in6 *ipv6_addr;
-//
-//        ipv6_addr            = (struct sockaddr_in6 *)addr;
-//        addr_len             = sizeof(*ipv6_addr);
-//        ipv6_addr->sin6_port = net_port;
-//        vaddr                = (void *)&(((struct sockaddr_in6 *)addr)->sin6_addr);
-//    }
-//    else
-//    {
-//        fprintf(stderr, "Internal error: addr->ss_family must be AF_INET or AF_INET6, was: %d\n", addr->ss_family);
-//        return -1;
-//    }
-//
-//    if(inet_ntop(addr->ss_family, vaddr, addr_str, sizeof(addr_str)) == NULL)
-//    {
-//        perror("inet_ntop");
-//        return -1;
-//    }
+    char *ip_address;
+    char *port;
 
-//    printf("Binding to: %s:%u\n", add, port);
+    ip_address  = safe_malloc(sizeof(char) * NI_MAXHOST, err);
+    port        = safe_malloc(sizeof(char) * NI_MAXSERV, err);
 
-    if(bind(sockfd, (struct sockaddr *)addr, size_of_address(addr)) == -1)
+    if (get_sockaddr_info(addr, &ip_address, &port, err) != 0)
     {
-        perror("Binding failed");
-        fprintf(stderr, "Error code: %d\n", errno);
         return -1;
     }
 
-//    printf("Bound to socket: %s:%u\n", addr_str, port);
+    printf("binding to: %s:%s\n", ip_address, port);
+
+    if(bind(sockfd, (struct sockaddr *)addr, size_of_address(addr)) == -1)
+    {
+        SET_ERROR(err, strerror(errno));
+        return -1;
+    }
+
+    printf("Bound to socket: %s:%s\n", ip_address, port);
+
+    free(ip_address);
+    free(port);
 
     return 0;
+
 }
 
 socklen_t size_of_address(struct sockaddr_storage *addr)
 {
     return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
+}
+
+int get_sockaddr_info(struct sockaddr_storage *addr, char **ip_address, char **port, struct fsm_error *err)
+{
+    char temp_ip[NI_MAXHOST];
+    char temp_port[NI_MAXSERV];
+    socklen_t ip_size;
+    int result;
+
+    ip_size     = sizeof(*addr);
+    result      = getnameinfo((struct sockaddr *)addr,
+                              ip_size, temp_ip, sizeof(temp_ip), temp_port, sizeof(temp_port),
+                              NI_NUMERICHOST | NI_NUMERICSERV);
+    if (result != 0)
+    {
+        SET_ERROR(err, strerror(errno));
+        return -1;
+    }
+
+    strcpy(*ip_address, temp_ip);
+    strcpy(*port, temp_port);
+
+    return 0;
+}
+
+void *safe_malloc(uint32_t size, struct fsm_error *err)
+{
+    void *ptr;
+
+    ptr = malloc(size);
+
+    if (!ptr && size > 0)
+    {
+        perror("Malloc failed\n");
+        exit(EXIT_FAILURE);
+    }
+
+    return ptr;
 }
