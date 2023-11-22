@@ -143,6 +143,8 @@ int main(int argc, char **argv)
             {STATE_SEND_CLIENT_PACKET,          STATE_ERROR,                     error_handler},
             {STATE_CLEANUP,                     FSM_EXIT,                        NULL},
     };
+    srand(time(NULL));
+
     fsm_run(&context, &err, 0, 0 , transitions);
 
     return 0;
@@ -299,7 +301,6 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in connect socket", "STATE_LISTEN_CLIENT");
     while (!exit_flag)
     {
-//        result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_window[ctx -> args -> client_first_empty_packet].pt);
         result = receive_packet(ctx->args->client_sockfd, &ctx->args->client_packet);
 
         if (result == -1)

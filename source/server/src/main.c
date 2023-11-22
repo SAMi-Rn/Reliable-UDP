@@ -219,6 +219,7 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
         return STATE_WAIT;
     }
 
+    printf("%s\n", ctx -> args -> temp_packet.data);
     return STATE_UPDATE_SEQ_NUMBER;
 }
 
@@ -235,6 +236,7 @@ static int update_seq_num_handler(struct fsm_context *context, struct fsm_error 
     }
 
     ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number, strlen(ctx -> args -> temp_packet.data));
+    printf("expected: %u", ctx -> args -> expected_seq_number );
     return STATE_WAIT;
 }
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)

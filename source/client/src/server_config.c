@@ -15,20 +15,31 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
     return sockfd;
 }
 
-int read_keyboard(char **buffer, uint32_t buffer_size) {
-    char *line = NULL;
-//char line[512];
+int read_keyboard(char **buffer, uint32_t *file_index) {
+//    char *line = NULL;
+char line[511];
     size_t len = 0;
     ssize_t read;
 
     read = 0;
+    memset(line, 0, sizeof(line));
     printf("\nEnter string below [ctrl + d] to quit\n");
-    while (read <= 0)
+    while (fgets(line, sizeof(line), stdin) == NULL)
     {
-        read = getline(&line, &len, stdin);
+//        printf("data: %s", line);
+//        if (strlen(line) > 0)
+//        {
+//            break;
+//        }
     }
 
-    printf("data: %s", line);
+    printf("in read keyboard\ndata: %s\n", line);
+    printf("length: %lu\n", strlen(line));
+//    while(fgets(line, sizeof(line) , stdin) != NULL)
+//    {
+//        printf("%s\n", line);
+//    }
+
     *buffer = (char *) malloc(strlen(line) + 1);
     strcpy(*buffer, line);
 
