@@ -386,6 +386,12 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
         printf("close socket error");
     }
 
+    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
+    {
+        pthread_join(ctx -> args -> thread_pool[i], NULL);
+    }
+
+    free(ctx -> args -> thread_pool);
     free(ctx -> args -> window);
     return FSM_EXIT;
 }
