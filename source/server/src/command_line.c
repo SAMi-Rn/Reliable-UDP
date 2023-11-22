@@ -118,9 +118,9 @@ void usage(const char *program_name)
     fprintf(stderr, "Usage: %s [-C] <value> [-c] <value> [-S] <value> [-s] <value> [-h]\n", program_name);
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
-    fputs("  -C <value>             Option 'c' (required) with value, Sets the IP client_addr\n", stderr);
+    fputs("  -C <value>             Option 'C' (required) with value, Sets the IP client_addr\n", stderr);
     fputs("  -c <value>             Option 'c' (required) with value, Sets the client port\n", stderr);
-    fputs("  -S <value>             Option 's' (required) with value, Sets the IP server_addr\n", stderr);
+    fputs("  -S <value>             Option 'S' (required) with value, Sets the IP server_addr\n", stderr);
     fputs("  -s <value>             Option 's' (required) with value, Sets the server port\n", stderr);
 }
 

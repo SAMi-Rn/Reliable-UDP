@@ -73,7 +73,6 @@ void *init_window_checker_function(void *ptr);
 typedef struct arguments
 {
     int                     sockfd, num_of_threads;
-    uint32_t                file_index;
     uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
@@ -81,7 +80,7 @@ typedef struct arguments
     struct sent_packet      *window;
     pthread_t               recv_thread, *thread_pool;
     struct packet           temp_packet, temp_message;
-    char                    *temp_buffer, *buffer;
+    char                    *temp_buffer;
     struct node             *head;
 } arguments;
 
@@ -92,7 +91,6 @@ int main(int argc, char **argv)
     struct fsm_error err;
     struct arguments args = {
             .head           = NULL,
-            .file_index     = 0
     };
     struct fsm_context context = {
             .argc = argc,
@@ -109,7 +107,6 @@ int main(int argc, char **argv)
             {STATE_BIND_SOCKET,             STATE_CREATE_WINDOW,       create_window_handler},
             {STATE_CREATE_WINDOW,           STATE_CONNECT_SOCKET,   connect_socket_handler},
             {STATE_CONNECT_SOCKET,          STATE_CREATE_RECV_THREAD,   create_recv_thread_handler},
-//            {STATE_CREATE_RECV_THREAD,      STATE_CONNECT_SOCKET,       connect_socket_handler},
             {STATE_CREATE_RECV_THREAD,          STATE_READ_FROM_KEYBOARD,   read_from_keyboard_handler},
             {STATE_READ_FROM_KEYBOARD,      STATE_CHECK_WINDOW, check_window_handler},
             {STATE_CHECK_WINDOW,      STATE_ADD_PACKET_TO_WINDOW, add_packet_to_window_handler},
@@ -134,6 +131,7 @@ int main(int argc, char **argv)
             {STATE_SEND_MESSAGE,             STATE_ERROR,                error_handler},
             {STATE_CLEANUP,                 FSM_EXIT,                   NULL},
     };
+
     fsm_run(&context, &err, 0, 0 , transitions);
 
     return 0;
@@ -208,7 +206,7 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in bind socket", "STATE_BIND_SOCKET");
-    if (socket_bind(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct, ctx -> args -> client_port, err))
+    if (socket_bind(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct, err))
     {
         return STATE_ERROR;
     }
@@ -221,17 +219,27 @@ static int create_window_handler(struct fsm_context *context, struct fsm_error *
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in create window", "STATE_CREATE_WINDOW");
-    if (create_window(&ctx -> args -> window, ctx -> args -> window_size) != 0)
+    if (create_window(&ctx -> args -> window, ctx -> args -> window_size, err) != 0)
     {
         return STATE_ERROR;
     }
 
-//    for (int i = 0; i < ctx -> args -> window_size; i++)
-//    {
-//        printf("in handler: %d: %d\n", i, ctx -> args -> window[i].is_packet_full);
-//    }
-
     return STATE_CONNECT_SOCKET;
+}
+
+
+static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
+    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                         ctx -> args -> server_port, ctx -> args -> window, err))
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_CREATE_RECV_THREAD;
 }
 
 static int create_recv_thread_handler(struct fsm_context *context, struct fsm_error *err)
@@ -240,26 +248,14 @@ static int create_recv_thread_handler(struct fsm_context *context, struct fsm_er
     int                     result;
     ctx = context;
     SET_TRACE(context, "in create receive thread", "STATE_CREATE_RECV_THREAD");
-    result = pthread_create(&ctx->args->recv_thread, NULL, init_recv_function, (void *) ctx);
+    result = pthread_create(&ctx->args->recv_thread, NULL, init_recv_function,
+                            (void *) ctx);
     if (result < 0)
     {
         return STATE_ERROR;
     }
 
     return STATE_READ_FROM_KEYBOARD;
-}
-
-static int connect_socket_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in connect socket", "STATE_CONNECT_SOCKET");
-    if (protocol_connect(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, ctx -> args -> window))
-    {
-        return STATE_ERROR;
-    }
-
-    return STATE_CREATE_RECV_THREAD;
 }
 
 static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_error *err)
@@ -269,7 +265,7 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
     SET_TRACE(context, "", "STATE_READ_FROM_KEYBOARD");
     while (!exit_flag)
     {
-        if (read_keyboard(&ctx -> args -> temp_buffer, &ctx -> args -> file_index) == -1)
+        if (read_keyboard(&ctx -> args -> temp_buffer) == -1)
         {
             exit_flag++;
             return STATE_CLEANUP;
@@ -305,7 +301,6 @@ static int add_packet_to_buffer_handler(struct fsm_context *context, struct fsm_
         init_list(&ctx -> args -> head, ctx -> args -> temp_buffer);
         return STATE_CHECK_WINDOW_THREAD;
     }
-
     push(ctx -> args -> head, ctx -> args -> temp_buffer);
 
     return STATE_READ_FROM_KEYBOARD;
@@ -341,12 +336,11 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     if (send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                    ctx -> args -> window, &ctx -> args -> temp_message) == -1)
+                    ctx -> args -> window, &ctx -> args -> temp_message, err) == -1)
     {
         return STATE_ERROR;
     }
 
-//    sleep(10);
     return STATE_CREATE_TIMER_THREAD;
 }
 
@@ -356,10 +350,19 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
     pthread_t *temp_thread_pool;
 
     ctx = context;
+//    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
+//    {
+//        if (ctx -> args -> thread_pool[i] == NULL)
+//        {
+//            free(ctx -> args -> thread_pool[i]);
+//        }
+//
+//    }
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CREATE_TIMER_THREAD");
     ctx -> args -> num_of_threads++;
-    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool,
+                                             sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
     {
         return STATE_ERROR;
@@ -368,7 +371,6 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
     ctx -> args -> thread_pool = temp_thread_pool;
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_timer_function, (void *) ctx);
-
 
     return STATE_READ_FROM_KEYBOARD;
 }
@@ -383,12 +385,13 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     {
         printf("close socket error");
     }
-//    globfree(&ctx -> args -> glob_result);
-//    for (int i = 0; i < ctx -> args -> window_size; i++)
-//    {
-//        free(ctx -> args -> window + i * sizeof(sent_packet));
-//    }
 
+    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
+    {
+        pthread_join(ctx -> args -> thread_pool[i], NULL);
+    }
+
+    free(ctx -> args -> thread_pool);
     free(ctx -> args -> window);
     return FSM_EXIT;
 }
@@ -407,11 +410,11 @@ static int listen_handler(struct fsm_context *context, struct fsm_error *err)
     ssize_t result;
 
     ctx = context;
-    result = 0;
     SET_TRACE(context, "", "STATE_LISTEN_SERVER");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->sockfd, ctx -> args -> window, &ctx -> args -> temp_packet);
+        result = receive_packet(ctx->args->sockfd, ctx -> args -> window,
+                                &ctx -> args -> temp_packet, err);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -468,9 +471,7 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                         ctx -> args -> window, &ctx -> args -> temp_packet );
-
-//    add_packet_to_window(ctx -> args -> window, &ctx -> args -> temp_packet);
+                         ctx -> args -> window, &ctx -> args -> temp_packet, err);
 
     return STATE_LISTEN;
 }
@@ -486,16 +487,16 @@ void *init_recv_function(void *ptr)
     struct fsm_error err;
 
     static struct fsm_transition transitions[] = {
-            {FSM_INIT,               STATE_LISTEN,             listen_handler},
-            {STATE_LISTEN,           STATE_CHECK_ACK_NUMBER,   check_ack_number_handler},
-            {STATE_CHECK_ACK_NUMBER, STATE_REMOVE_FROM_WINDOW, remove_packet_from_window_handler},
-            {STATE_CHECK_ACK_NUMBER, STATE_SEND_PACKET,        send_packet_handler},
-            {STATE_CHECK_ACK_NUMBER, STATE_TERMINATION,        send_packet_handler},
-            {STATE_REMOVE_FROM_WINDOW, STATE_LISTEN,        listen_handler},
-            {STATE_SEND_PACKET,      STATE_LISTEN,             listen_handler},
-            {STATE_LISTEN,           STATE_ERROR,   error_handler},
-            {STATE_LISTEN,           FSM_EXIT,                   NULL},
-            {STATE_ERROR,            FSM_EXIT,                   NULL},
+            {FSM_INIT,                  STATE_LISTEN,             listen_handler},
+            {STATE_LISTEN,              STATE_CHECK_ACK_NUMBER,   check_ack_number_handler},
+            {STATE_CHECK_ACK_NUMBER,    STATE_REMOVE_FROM_WINDOW, remove_packet_from_window_handler},
+            {STATE_CHECK_ACK_NUMBER,    STATE_SEND_PACKET,        send_packet_handler},
+            {STATE_CHECK_ACK_NUMBER,    STATE_TERMINATION,        send_packet_handler},
+            {STATE_REMOVE_FROM_WINDOW,  STATE_LISTEN,             listen_handler},
+            {STATE_SEND_PACKET,         STATE_LISTEN,             listen_handler},
+            {STATE_LISTEN,              STATE_ERROR,              error_handler},
+            {STATE_LISTEN,              FSM_EXIT,                 NULL},
+            {STATE_ERROR,               FSM_EXIT,                 NULL},
     };
 
     fsm_run(ctx, &err, 0, 0 , transitions);
@@ -505,12 +506,14 @@ void *init_recv_function(void *ptr)
 
 void *init_timer_function(void *ptr)
 {
-    struct fsm_context *ctx = (struct fsm_context*) ptr;
-    int index;
-    int counter;
+    struct fsm_context  *ctx;
+    struct fsm_error    err;
+    int                 index;
+    int                 counter;
 
-    index = previous_index(ctx -> args -> window);
-    counter = 0;
+    ctx                 = (struct fsm_context*) ptr;
+    index               = previous_index(ctx -> args -> window);
+    counter             = 0;
 
     while (ctx -> args -> window[index].is_packet_full)
     {
@@ -518,7 +521,7 @@ void *init_timer_function(void *ptr)
         if (ctx -> args -> window[index].is_packet_full)
         {
             send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
-                        &ctx->args->window[index].pt);
+                        &ctx->args->window[index].pt, &err);
             counter++;
         }
     }
@@ -539,7 +542,7 @@ void *init_window_checker_function(void *ptr)
 
             create_data_packet(&pt, ctx -> args -> window, ctx -> args -> head->data);
             send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                        ctx -> args -> window, &pt);
+                        ctx -> args -> window, &pt, err);
             create_timer_thread_handler(ctx, err);
             printf("sent packet with seq number %u\n", pt.hd.seq_number);
             pop(&ctx -> args -> head);

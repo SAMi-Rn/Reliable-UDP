@@ -1,18 +1,18 @@
 #include <pthread.h>
 #include "protocol.h"
 
-int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window)
+int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window, struct fsm_error *err)
 {
     struct packet temp_packet;
-    send_syn_packet(sockfd, addr, window);
-    receive_packet(sockfd, window, &temp_packet);
+    send_syn_packet(sockfd, addr, window, err);
+    receive_packet(sockfd, window, &temp_packet, err);
     remove_packet_from_window(window, &temp_packet);
-    read_received_packet(sockfd, addr, window, &temp_packet);
+    read_received_packet(sockfd, addr, window, &temp_packet, err);
 
     return 0;
 }
 
-int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     int result;
 
@@ -23,27 +23,27 @@ int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     {
         case ESTABLISH_HANDSHAKE:
         {
-            send_syn_ack_packet(sockfd, addr, window, pt);
+            send_syn_ack_packet(sockfd, addr, window, pt, err);
             break;
         }
         case SEND_HANDSHAKE_ACK:
         {
-            send_handshake_ack_packet(sockfd, addr, window, pt);
+            send_handshake_ack_packet(sockfd, addr, window, pt, err);
             break;
         }
         case SEND_ACK:
         {
-            send_data_ack_packet(sockfd, addr, window, pt);
+            send_data_ack_packet(sockfd, addr, window, pt, err);
             break;
         }
         case RECV_ACK:
         {
-            recv_ack_packet(sockfd, addr, window, pt);
+            recv_ack_packet(sockfd, addr, window, pt, err);
             break;
         }
         case END_CONNECTION:
         {
-            recv_termination_request(sockfd, addr, window, pt);
+            recv_termination_request(sockfd, addr, window, pt, err);
             break;
         }
         case RECV_RST:
@@ -92,7 +92,7 @@ int read_flags(uint8_t flags)
     return UNKNOWN_FLAG;
 }
 
-int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window)
+int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -102,13 +102,13 @@ int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packe
     packet_to_send.hd.window_size           = window_size;
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -117,13 +117,13 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_p
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -132,13 +132,13 @@ int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -148,13 +148,13 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     packet_to_send.hd.window_size       = window_size;
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data)
+int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -164,13 +164,13 @@ int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_pack
     packet_to_send.hd.window_size       = window_size;
     strcpy(packet_to_send.data, data);
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -179,26 +179,26 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     // check if incoming ack is same as expected ack
     return 0;
 }
 
-int recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt)
+int recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
     // send ack and then check if all packets have been acked
     // then send fin ack
     return 0;
 }
 
-int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window)
+int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -207,7 +207,7 @@ int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.flags                 = FINACK;
     packet_to_send.hd.window_size           = window_size;
 
-    send_packet(sockfd, addr, window, &packet_to_send);
+    send_packet(sockfd, addr, window, &packet_to_send, err);
     return 0;
 }
 
@@ -246,13 +246,6 @@ int create_data_packet(struct packet *pt, struct sent_packet *window, char *data
     packet_to_send.hd.flags             = PSHACK;
     packet_to_send.hd.window_size       = window_size;
     strcpy(packet_to_send.data, data);
-
-    printf("seq number: %u\n", packet_to_send.hd.seq_number);
-    printf("ack number: %u\n", packet_to_send.hd.ack_number);
-    printf("window number: %u\n", packet_to_send.hd.window_size);
-    printf("flags: %u\n", packet_to_send.hd.flags);
-    printf("time: %ld\n", packet_to_send.hd.tv.tv_sec);
-    printf("data: %s\n\n\n\n", packet_to_send.data);
 
     *pt = packet_to_send;
     add_packet_to_window(window, &packet_to_send);
