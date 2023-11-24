@@ -12,6 +12,8 @@ enum application_states
     STATE_CREATE_SOCKET,
     STATE_BIND_SOCKET,
     STATE_WAIT,
+    STATE_SEND_SYN_ACK,
+    STATE_CREATE_TIMER,
     STATE_CHECK_SEQ_NUMBER,
     STATE_CHECK_FLAGS,
     STATE_SEND_PACKET,
@@ -26,6 +28,8 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int wait_handler(struct fsm_context *context, struct fsm_error *err);
+static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_timer_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int update_seq_num_handler(struct fsm_context *context, struct fsm_error *err);
@@ -37,15 +41,18 @@ static int                      setup_signal_handler(struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
+void *init_timer_function(void *ptr);
+
 typedef struct arguments
 {
-    int                     sockfd;
+    int                     sockfd, num_of_threads;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct;
     struct packet           temp_packet;
     uint32_t                expected_seq_number;
     pthread_t               recv_thread;
+    pthread_t               *thread_pool;
 } arguments;
 
 
@@ -191,6 +198,32 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     return FSM_EXIT;
 }
 
+static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ssize_t result;
+
+    ctx = context;
+    SET_TRACE(context, "", "STATE_LISTEN_SERVER");
+    while (!exit_flag)
+    {
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+        if (result == -1)
+        {
+            return STATE_ERROR;
+        }
+
+        return STATE_CHECK_SEQ_NUMBER;
+    }
+
+    return FSM_EXIT;
+}
+
+static int create_timer_handler(struct fsm_context *context, struct fsm_error *err)
+{
+
+}
+
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
@@ -259,4 +292,29 @@ static int error_handler(struct fsm_context *context, struct fsm_error *err)
             err -> err_msg, err -> file_name, err -> function_name, err -> error_line);
 
     return STATE_CLEANUP;
+}
+
+void *init_timer_function(void *ptr)
+{
+    struct fsm_context  *ctx;
+    struct fsm_error    err;
+    uint32_t            temp_ack_number;
+    int                 counter;
+
+    ctx                 = (struct fsm_context*) ptr;
+    temp_ack_number     = ctx -> args -> expected_seq_number - 1;
+    counter             = 0;
+
+//    while ()
+//    {
+//        sleep(TIMER_TIME);
+//        if (ctx -> args -> window[index].is_packet_full)
+//        {
+//            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
+//                        &ctx->args->window[index].pt, &err);
+//            counter++;
+//        }
+//    }
+
+    pthread_exit(NULL);
 }
