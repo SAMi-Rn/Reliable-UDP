@@ -38,14 +38,14 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, st
     }
 
 //    printf("\nfirst empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
-//    printf("\n\nSENDING:\n");
-//    printf("bytes: %zd\n", result);
-//    printf("seq number: %u\n", pt->hd.seq_number);
-//    printf("ack number: %u\n", pt->hd.ack_number);
-//    printf("window number: %u\n", pt->hd.window_size);
-//    printf("flags: %u\n", pt->hd.flags);
-//    printf("time: %ld\n", pt->hd.tv.tv_sec);
-//    printf("data: %s\n\n", pt->data);
+    printf("\n\nSENDING:\n");
+    printf("bytes: %zd\n", result);
+    printf("seq number: %u\n", pt->hd.seq_number);
+    printf("ack number: %u\n", pt->hd.ack_number);
+    printf("window number: %u\n", pt->hd.window_size);
+    printf("flags: %u\n", pt->hd.flags);
+    printf("time: %ld\n", pt->hd.tv.tv_sec);
+    printf("data: %s\n\n", pt->data);
 
     return 0;
 }

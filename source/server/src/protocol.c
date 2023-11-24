@@ -109,6 +109,21 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet
     return 0;
 }
 
+int create_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
+{
+    struct packet packet_to_send;
+
+    packet_to_send.hd.seq_number        = create_second_handshake_seq_number();
+    packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
+    packet_to_send.hd.flags             = create_flags(pt->hd.flags);
+    packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+
+    *pt = packet_to_send;
+
+    return 0;
+}
+
 int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
