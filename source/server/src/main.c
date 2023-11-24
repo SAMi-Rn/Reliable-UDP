@@ -88,7 +88,9 @@ int main(int argc, char **argv)
             {STATE_SEND_PACKET,        STATE_WAIT,     wait_handler},
             {STATE_UPDATE_SEQ_NUMBER,  STATE_WAIT,                  wait_handler},
             {STATE_UPDATE_SEQ_NUMBER,  STATE_CREATE_TIMER_THREAD,                  create_timer_handler},
-            {STATE_CREATE_TIMER_THREAD,  STATE_WAIT,                  wait_handler},
+            {STATE_CREATE_TIMER_THREAD,  STATE_WAIT_FOR_ACK,                  wait_for_ack_handler},
+            {STATE_WAIT_FOR_ACK,  STATE_WAIT,                  wait_handler},
+            {STATE_WAIT_FOR_ACK,  STATE_CLEANUP,                  cleanup_handler},
             {STATE_ERROR,              STATE_CLEANUP,               cleanup_handler},
             {STATE_PARSE_ARGUMENTS,    STATE_ERROR,                 error_handler},
             {STATE_HANDLE_ARGUMENTS,   STATE_ERROR,                 error_handler},
@@ -231,14 +233,15 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
     create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                          &ctx -> args -> temp_packet, err);
 
-    send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+    send_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                 &ctx -> args -> temp_packet, err);
 
     return STATE_UPDATE_SEQ_NUMBER;
 }
 
 static int create_timer_handler(struct fsm_context *context, struct fsm_error *err)
-{    struct fsm_context *ctx;
+{
+    struct fsm_context *ctx;
     pthread_t *temp_thread_pool;
 
     ctx = context;
@@ -264,13 +267,33 @@ static int create_timer_handler(struct fsm_context *context, struct fsm_error *e
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_timer_function, (void *) ctx);
 
-    return STATE_WAIT;
-
+    return STATE_WAIT_FOR_ACK;
 }
 
 static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *err)
 {
+    struct fsm_context *ctx;
+    ssize_t result;
 
+    ctx = context;
+    SET_TRACE(context, "", "STATE_WAIT_FOR_ACK");
+    while (!exit_flag)
+    {
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+
+        if (result == -1)
+        {
+            return STATE_ERROR;
+        }
+
+        if (ctx -> args -> temp_packet.hd.flags == ACK &&
+            check_if_equal(ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> expected_seq_number))
+        {
+            return STATE_WAIT;
+        }
+    }
+
+    return STATE_CLEANUP;
 }
 
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err)

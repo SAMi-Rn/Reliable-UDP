@@ -66,14 +66,14 @@ int receive_packet(int sockfd, struct packet *temp_packet, struct fsm_error *err
         return -1;
     }
 
-//    printf("\n\nRECEIVED:\n");
+    printf("\n\nRECEIVED:\n");
 //    printf("bytes: %zd\n", result);
-//    printf("seq number: %u\n", pt.hd.seq_number);
-//    printf("ack number: %u\n", pt.hd.ack_number);
+    printf("seq number: %u\n", pt.hd.seq_number);
+    printf("ack number: %u\n", pt.hd.ack_number);
 //    printf("window number: %u\n", pt.hd.window_size);
 //    printf("flags: %u\n", pt.hd.flags);
 //    printf("time: %ld\n", pt.hd.tv.tv_sec);
-//    printf("data: %s\n\n\n\n", pt.data);
+    printf("data: %s\n\n\n\n", pt.data);
 
     *temp_packet = pt;
 
