@@ -4,6 +4,8 @@
 #include "command_line.h"
 #include <pthread.h>
 
+#define TIMER_TIME 1
+
 enum application_states
 {
     STATE_PARSE_ARGUMENTS = FSM_USER_START,
@@ -15,6 +17,8 @@ enum application_states
     STATE_SEND_SYN_ACK,
     STATE_CREATE_TIMER,
     STATE_CHECK_SEQ_NUMBER,
+    STATE_CREATE_TIMER_THREAD,
+    STATE_WAIT_FOR_ACK,
     STATE_CHECK_FLAGS,
     STATE_SEND_PACKET,
     STATE_UPDATE_SEQ_NUMBER,
@@ -31,6 +35,7 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_timer_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err);
+static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int update_seq_num_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
@@ -55,8 +60,6 @@ typedef struct arguments
     pthread_t               *thread_pool;
 } arguments;
 
-
-
 int main(int argc, char **argv)
 {
     struct fsm_error err;
@@ -78,11 +81,17 @@ int main(int argc, char **argv)
             {STATE_BIND_SOCKET,         STATE_WAIT,                 wait_handler},
             {STATE_WAIT,                STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
             {STATE_CHECK_SEQ_NUMBER,    STATE_SEND_PACKET,          send_packet_handler},
+            {STATE_CHECK_SEQ_NUMBER,    STATE_SEND_SYN_ACK,          send_syn_ack_handler},
+            {STATE_SEND_SYN_ACK,    STATE_UPDATE_SEQ_NUMBER,          update_seq_num_handler},
             {STATE_CHECK_SEQ_NUMBER,    STATE_WAIT,                 wait_handler },
             {STATE_CHECK_FLAGS,         STATE_SEND_PACKET,          send_packet_handler},
             {STATE_SEND_PACKET,        STATE_UPDATE_SEQ_NUMBER,     update_seq_num_handler},
             {STATE_SEND_PACKET,        STATE_WAIT,     wait_handler},
             {STATE_UPDATE_SEQ_NUMBER,  STATE_WAIT,                  wait_handler},
+            {STATE_UPDATE_SEQ_NUMBER,  STATE_CREATE_TIMER_THREAD,                  create_timer_handler},
+            {STATE_CREATE_TIMER_THREAD,  STATE_WAIT_FOR_ACK,                  wait_for_ack_handler},
+            {STATE_WAIT_FOR_ACK,  STATE_WAIT,                  wait_handler},
+            {STATE_WAIT_FOR_ACK,  STATE_CLEANUP,                  cleanup_handler},
             {STATE_ERROR,              STATE_CLEANUP,               cleanup_handler},
             {STATE_PARSE_ARGUMENTS,    STATE_ERROR,                 error_handler},
             {STATE_HANDLE_ARGUMENTS,   STATE_ERROR,                 error_handler},
@@ -198,32 +207,6 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     return FSM_EXIT;
 }
 
-static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ssize_t result;
-
-    ctx = context;
-    SET_TRACE(context, "", "STATE_LISTEN_SERVER");
-    while (!exit_flag)
-    {
-        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
-        if (result == -1)
-        {
-            return STATE_ERROR;
-        }
-
-        return STATE_CHECK_SEQ_NUMBER;
-    }
-
-    return FSM_EXIT;
-}
-
-static int create_timer_handler(struct fsm_context *context, struct fsm_error *err)
-{
-
-}
-
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
@@ -232,10 +215,86 @@ static int check_seq_number_handler(struct fsm_context *context, struct fsm_erro
 
     if (check_seq_number(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
     {
+        if (ctx -> args -> temp_packet.hd.flags == SYN)
+        {
+            return STATE_SEND_SYN_ACK;
+        }
+
         return STATE_SEND_PACKET;
     }
 
     return STATE_WAIT;
+}
+
+static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in connect socket", "STATE_START_HANDSHAKE");
+    create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                         &ctx -> args -> temp_packet, err);
+
+    send_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
+                &ctx -> args -> temp_packet, err);
+
+    return STATE_UPDATE_SEQ_NUMBER;
+}
+
+static int create_timer_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    pthread_t *temp_thread_pool;
+
+    ctx = context;
+//    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
+//    {
+//        if (ctx -> args -> thread_pool[i] == NULL)
+//        {
+//            free(ctx -> args -> thread_pool[i]);
+//        }
+//
+//    }
+    temp_thread_pool = ctx -> args -> thread_pool;
+    SET_TRACE(context, "", "STATE_CREATE_TIMER_THREAD");
+    ctx -> args -> num_of_threads++;
+    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool,
+                                             sizeof(pthread_t) * ctx -> args -> num_of_threads);
+    if (temp_thread_pool == NULL)
+    {
+        return STATE_ERROR;
+    }
+
+    ctx -> args -> thread_pool = temp_thread_pool;
+
+    pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_timer_function, (void *) ctx);
+
+    return STATE_WAIT_FOR_ACK;
+}
+
+static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ssize_t result;
+
+    ctx = context;
+    SET_TRACE(context, "", "STATE_WAIT_FOR_ACK");
+    while (!exit_flag)
+    {
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+
+        if (result == -1)
+        {
+            return STATE_ERROR;
+        }
+
+        if (ctx -> args -> temp_packet.hd.flags == ACK &&
+            check_if_equal(ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> expected_seq_number))
+        {
+            return STATE_WAIT;
+        }
+    }
+
+    return STATE_CLEANUP;
 }
 
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err)
@@ -268,6 +327,12 @@ static int update_seq_num_handler(struct fsm_context *context, struct fsm_error 
         return STATE_WAIT;
     }
 
+    if (ctx -> args -> temp_packet.hd.flags == SYNACK)
+    {
+        ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number, 1);
+        return STATE_CREATE_TIMER_THREAD;
+    }
+
     ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number, strlen(ctx -> args -> temp_packet.data));
 //    printf("expected: %u\n", ctx -> args -> expected_seq_number );
     return STATE_WAIT;
@@ -298,20 +363,24 @@ void *init_timer_function(void *ptr)
 {
     struct fsm_context  *ctx;
     struct fsm_error    err;
-    uint32_t            temp_ack_number;
+
+    uint32_t            temp_expected_number;
+    packet              packet_to_send;
     int                 counter;
 
-    ctx                 = (struct fsm_context*) ptr;
-    temp_ack_number     = ctx -> args -> expected_seq_number - 1;
-    counter             = 0;
+    ctx                     = (struct fsm_context*) ptr;
+    temp_expected_number    = ctx -> args -> expected_seq_number - 1;
+    packet_to_send          = ctx -> args -> temp_packet;
+    counter                 = 0;
 
-//    while ()
+    printf("temp: %u\n", temp_expected_number);
+//    while (temp_expected_number < ctx -> args -> expected_seq_number)
 //    {
 //        sleep(TIMER_TIME);
-//        if (ctx -> args -> window[index].is_packet_full)
+//        if (temp_expected_number < ctx -> args -> expected_seq_number)
 //        {
-//            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
-//                        &ctx->args->window[index].pt, &err);
+//            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
+//                        &packet_to_send, &err);
 //            counter++;
 //        }
 //    }

@@ -123,6 +123,7 @@ int create_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct pack
 
     return 0;
 }
+
 int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
 {
     struct packet packet_to_send;
