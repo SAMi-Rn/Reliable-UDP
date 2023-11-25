@@ -177,6 +177,7 @@ int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, st
     *pt = temp_pt;
 
     printf("\n\nRECEIVED:\n");
+    printf("seq number: %u\n", pt->hd.seq_number);
     printf("ack number: %u\n", pt->hd.ack_number);
     printf("flags: %u\n", pt->hd.flags);
 
