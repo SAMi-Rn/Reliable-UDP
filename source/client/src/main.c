@@ -519,6 +519,14 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
     {
         return STATE_TERMINATION;
     }
+    else if (result == SEND_HANDSHAKE_ACK)
+    {
+        printf("recieved syn ack again\n");
+        packet pt = ctx -> args -> temp_packet;
+        create_handshake_ack_packet(ctx->args->sockfd, &ctx -> args -> server_addr_struct,
+                                    ctx -> args -> window,&ctx -> args -> temp_packet, err);
+        return STATE_LISTEN;
+    }
 
     return STATE_SEND_PACKET;
 }
@@ -562,6 +570,7 @@ void *init_recv_function(void *ptr)
             {STATE_CHECK_ACK_NUMBER,    STATE_REMOVE_FROM_WINDOW, remove_packet_from_window_handler},
             {STATE_CHECK_ACK_NUMBER,    STATE_SEND_PACKET,        send_packet_handler},
             {STATE_CHECK_ACK_NUMBER,    STATE_TERMINATION,        send_packet_handler},
+            {STATE_CHECK_ACK_NUMBER,    STATE_LISTEN,             listen_handler},
             {STATE_REMOVE_FROM_WINDOW,  STATE_LISTEN,             listen_handler},
             {STATE_SEND_PACKET,         STATE_LISTEN,             listen_handler},
             {STATE_LISTEN,              STATE_ERROR,              error_handler},

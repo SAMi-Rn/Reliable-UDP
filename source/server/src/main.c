@@ -15,7 +15,6 @@ enum application_states
     STATE_BIND_SOCKET,
     STATE_WAIT,
     STATE_SEND_SYN_ACK,
-    STATE_CREATE_TIMER,
     STATE_CHECK_SEQ_NUMBER,
     STATE_CREATE_TIMER_THREAD,
     STATE_WAIT_FOR_ACK,
@@ -50,7 +49,7 @@ void *init_timer_function(void *ptr);
 
 typedef struct arguments
 {
-    int                     sockfd, num_of_threads;
+    int                     sockfd, num_of_threads, is_handshake_ack;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct;
@@ -231,7 +230,8 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in connect socket", "STATE_START_HANDSHAKE");
-    create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+    ctx -> args -> is_handshake_ack++;
+    create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                          &ctx -> args -> temp_packet, err);
 
     send_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
@@ -290,7 +290,14 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
         if (ctx -> args -> temp_packet.hd.flags == ACK &&
             check_if_equal(ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> expected_seq_number))
         {
+            ctx -> args -> is_handshake_ack = 0;
             return STATE_WAIT;
+        }
+
+        if (check_if_less(ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> expected_seq_number))
+        {
+            read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
+                                 &ctx -> args -> temp_packet, err);
         }
     }
 
@@ -364,26 +371,27 @@ void *init_timer_function(void *ptr)
     struct fsm_context  *ctx;
     struct fsm_error    err;
 
-    uint32_t            temp_expected_number;
     packet              packet_to_send;
     int                 counter;
 
     ctx                     = (struct fsm_context*) ptr;
-    temp_expected_number    = ctx -> args -> expected_seq_number - 1;
     packet_to_send          = ctx -> args -> temp_packet;
     counter                 = 0;
 
-    printf("temp: %u\n", temp_expected_number);
-//    while (temp_expected_number < ctx -> args -> expected_seq_number)
-//    {
-//        sleep(TIMER_TIME);
-//        if (temp_expected_number < ctx -> args -> expected_seq_number)
-//        {
-//            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
-//                        &packet_to_send, &err);
-//            counter++;
-//        }
-//    }
+    while (!exit_flag || ctx -> args -> is_handshake_ack)
+    {
+        sleep(TIMER_TIME);
+        if (ctx -> args -> is_handshake_ack)
+        {
+            printf("Sending syn ack again\n");
+            printf("temp seq: %u\n", packet_to_send.hd.seq_number);
+            printf("temp ack: %u\n", packet_to_send.hd.ack_number);
+            printf("temp flags: %u\n", packet_to_send.hd.flags);
+            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
+                        &packet_to_send, &err);
+            counter++;
+        }
+    }
 
     pthread_exit(NULL);
 }

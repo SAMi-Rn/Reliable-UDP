@@ -307,7 +307,7 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
         {
             return STATE_ERROR;
         }
-        printf("Client packet with seq number: %u received\n", ctx -> args -> client_packet.hd.seq_number);
+        printf("Client packet with seq number: %u ack number: %u flags: %u received\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
 
         return STATE_CLIENT_CALCULATE_LOSSINESS;
     }
@@ -341,7 +341,8 @@ static int client_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_CLIENT_DROP");
 
-    printf("Client packet with seq number: %u dropped\n", ctx -> args -> client_packet.hd.seq_number);
+    printf("Client packet with seq number: %u ack number: %u flags: %u dropped\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+
     return STATE_LISTEN_CLIENT;
 }
 
@@ -353,7 +354,8 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CLIENT_DELAY_PACKET");
-    printf("Client packet with seq number: %u delayed\n", ctx -> args -> client_packet.hd.seq_number);
+    printf("Client packet with seq number: %u ack number: %u flags: %u delayed\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+
     ctx -> args -> num_of_threads++;
     temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
@@ -383,7 +385,8 @@ static int send_client_packet_handler(struct fsm_context *context, struct fsm_er
         return STATE_ERROR;
     }
 
-    printf("Client packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
+    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+
     return STATE_LISTEN_CLIENT;
 }
 
@@ -421,7 +424,7 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
         {
             return STATE_ERROR;
         }
-        printf("Server packet with ack number: %u received\n", ctx -> args -> server_packet.hd.ack_number);
+        printf("Server packet with seq number: %u ack number: %u flags: %u received\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
 
         return STATE_SERVER_CALCULATE_LOSSINESS;
     }
@@ -455,7 +458,8 @@ static int server_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_SERVER_DROP");
 
-    printf("Server packet with ack number: %u dropped\n", ctx -> args -> server_packet.hd.ack_number);
+    printf("Server packet with seq number: %u ack number: %u flags: %u dropped\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
+
     return STATE_LISTEN_SERVER;
 }
 
@@ -496,7 +500,8 @@ static int send_server_packet_handler(struct fsm_context *context, struct fsm_er
         return STATE_ERROR;
     }
 
-    printf("Server packet with ack number: %u sent\n", ctx -> args -> server_packet.hd.ack_number);
+    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
+
     return STATE_LISTEN_SERVER;
 }
 
@@ -581,11 +586,11 @@ void *init_client_delay_thread(void *ptr)
     temp_packet          = &ctx -> args -> client_packet;
     temp_delay           = ctx -> args -> client_delay_rate;
 
-    printf("Client packet with seq number: %u delayed for %u seconds\n", ctx -> args -> client_packet.hd.seq_number, DELAY_TIME);
+    printf("Client packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
     delay_packet(DELAY_TIME);
     send_packet(ctx -> args -> server_sockfd, temp_packet, &ctx -> args -> server_addr_struct);
 
-    printf("Client packet with seq number: %u sent\n", ctx -> args -> client_packet.hd.seq_number);
+    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
     return NULL;
 }
 
@@ -599,10 +604,10 @@ void *init_server_delay_thread(void *ptr)
     temp_packet          = &ctx -> args -> server_packet;
     temp_delay           = ctx -> args -> server_delay_rate;
 
-    printf("Server packet with ack number: %u delayed for %u seconds\n", ctx -> args -> server_packet.hd.ack_number, DELAY_TIME);
+    printf("Server packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
     delay_packet(DELAY_TIME);
     send_packet(ctx -> args -> client_sockfd, temp_packet, &ctx -> args -> client_addr_struct);
 
-    printf("Server packet with ack number: %u sent\n", ctx -> args -> client_packet.hd.ack_number);
+    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
     return NULL;
 }

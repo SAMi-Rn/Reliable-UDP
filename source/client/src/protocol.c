@@ -252,3 +252,19 @@ int create_data_packet(struct packet *pt, struct sent_packet *window, char *data
 
     return 0;
 }
+
+int create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+{
+    struct packet packet_to_send;
+
+    packet_to_send.hd.seq_number        = create_sequence_number(pt->hd.ack_number, 0);
+    packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
+    packet_to_send.hd.flags             = create_flags(pt->hd.flags);
+    packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+
+    send_packet(sockfd, addr, window, &packet_to_send, err);
+    *pt = packet_to_send;
+
+    return 0;
+}
