@@ -15,50 +15,41 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
     return sockfd;
 }
 
-int socket_connect(int sockfd, struct sockaddr_storage *server_addr_struct, in_port_t server_port, struct fsm_error *err)
+int start_listening(int sockfd, int backlog, struct fsm_error *err)
 {
-    char      addr_str[INET6_ADDRSTRLEN];
-    in_port_t net_port;
-
-    if(inet_ntop(server_addr_struct->ss_family, server_addr_struct->ss_family == AF_INET ? (void *)&(((struct sockaddr_in *)server_addr_struct)->sin_addr) : (void *)&(((struct sockaddr_in6 *)server_addr_struct)->sin6_addr), addr_str, sizeof(addr_str)) == NULL)
+    if(listen(sockfd, backlog) == -1)
     {
         SET_ERROR(err, strerror(errno));
+
         return -1;
     }
-
-    printf("Connecting to: %s:%u\n", addr_str, server_port);
-    net_port = htons(server_port);
-
-    if(server_addr_struct->ss_family == AF_INET)
-    {
-        struct sockaddr_in *ipv4_addr;
-        ipv4_addr = (struct sockaddr_in *)server_addr_struct;
-        ipv4_addr->sin_port = net_port;
-        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in)) == -1)
-        {
-            SET_ERROR(err, strerror(errno));
-            return -1;
-        }
-    }
-    else if(server_addr_struct->ss_family == AF_INET6)
-    {
-        struct sockaddr_in6 *ipv6_addr;
-        ipv6_addr = (struct sockaddr_in6 *)server_addr_struct;
-        ipv6_addr->sin6_port = net_port;
-        if(connect(sockfd, (struct sockaddr *)server_addr_struct, sizeof(struct sockaddr_in6)) == -1)
-        {
-            SET_ERROR(err, strerror(errno));
-            return -1;
-        }
-    }
-    else
-    {
-        SET_ERROR(err, "Address family not supported");
-        return -1;
-    }
-    printf("Connected to: %s:%u\n", addr_str, server_port);
 
     return 0;
+}
+
+int socket_accept_connection(int sockfd, struct fsm_error *err)
+{
+    struct sockaddr             client_addr;
+    socklen_t                   client_addr_len;
+
+    client_addr_len             = sizeof(client_addr);
+    int client_fd;
+
+    errno = 0;
+    client_fd = accept(sockfd, &client_addr, &client_addr_len);
+
+    if(client_fd == -1)
+    {
+        if(errno != EINTR)
+        {
+            perror("Error in connecting to client.");
+        }
+        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    return client_fd;
 }
 
 int socket_close(int sockfd, struct fsm_error *err)
