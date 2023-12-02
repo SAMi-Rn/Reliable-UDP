@@ -175,3 +175,20 @@ void *safe_malloc(uint32_t size, struct fsm_error *err)
 
     return ptr;
 }
+
+int send_stats_gui(int sockfd, uint8_t stat)
+{
+    uint8_t converted_size;
+    ssize_t result;
+
+    converted_size  = htonl(stat);
+    result          = write(sockfd, &converted_size, sizeof(converted_size));
+
+    if (result <= 0)
+    {
+        return -1;
+    }
+
+
+    return 0;
+}
