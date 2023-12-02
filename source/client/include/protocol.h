@@ -51,5 +51,6 @@ int                 recv_termination_request(int sockfd, struct sockaddr_storage
 int                 initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err);
 int                 create_flags(uint8_t flags);
 int                 create_data_packet(struct packet *pt, struct sent_packet *window, char *data);
+int                 create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
 
 #endif //CLIENT_PROTOCOL_H
