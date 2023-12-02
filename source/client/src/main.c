@@ -14,6 +14,8 @@ enum main_application_states
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
     STATE_BIND_SOCKET,
+    STATE_LISTEN,
+    STATE_CREATE_GUI_THREAD,
     STATE_CREATE_WINDOW,
     STATE_START_HANDSHAKE,
     STATE_CREATE_HANDSHAKE_TIMER,
@@ -33,11 +35,22 @@ enum main_application_states
 
 enum receiving_thread_application_states
 {
-    STATE_LISTEN = FSM_USER_START,
+    STATE_WAIT = FSM_USER_START,
     STATE_CHECK_ACK_NUMBER,
     STATE_REMOVE_FROM_WINDOW,
     STATE_SEND_PACKET,
     STATE_TERMINATION
+};
+
+enum gui_stats
+{
+    SENT_PACKET,
+    RECEIVED_PACKET,
+    RESENT_PACKET,
+    DROPPED_CLIENT_PACKET,
+    DELAYED_CLIENT_PACKET,
+    DROPPED_SERVER_PACKET,
+    DELAYED_SERVER_PACKET
 };
 
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
@@ -45,6 +58,8 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
+static int listen_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int start_handshake_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_handshake_timer_handler(struct fsm_context *context, struct fsm_error *err);
@@ -61,7 +76,7 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
-static int listen_handler(struct fsm_context *context, struct fsm_error *err);
+static int wait_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_ack_number_handler(struct fsm_context *context, struct fsm_error *err);
 static int remove_packet_from_window_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err);
@@ -75,16 +90,18 @@ static volatile sig_atomic_t exit_flag = 0;
 void *init_recv_function(void *ptr);
 void *init_timer_function(void *ptr);
 void *init_window_checker_function(void *ptr);
+void *init_gui_function(void *ptr);
 
 typedef struct arguments
 {
     int                     sockfd, num_of_threads, is_buffered;
+    int                     client_gui_fd, connected_gui_fd, is_connected_gui;
     uint8_t                 window_size;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str;
     in_port_t               server_port, client_port;
-    struct sockaddr_storage server_addr_struct, client_addr_struct;
+    struct sockaddr_storage server_addr_struct, client_addr_struct, gui_addr_struct;
     struct sent_packet      *window;
-    pthread_t               recv_thread, *thread_pool;
+    pthread_t               recv_thread, accept_gui_thread, *thread_pool;
     struct packet           temp_packet, temp_message;
     char                    *temp_buffer;
     struct node             *head;
@@ -111,7 +128,9 @@ int main(int argc, char **argv)
             {STATE_HANDLE_ARGUMENTS,     STATE_CONVERT_ADDRESS,      convert_address_handler},
             {STATE_CONVERT_ADDRESS,      STATE_CREATE_SOCKET,        create_socket_handler},
             {STATE_CREATE_SOCKET,        STATE_BIND_SOCKET,          bind_socket_handler},
-            {STATE_BIND_SOCKET,          STATE_CREATE_WINDOW,        create_window_handler},
+            {STATE_BIND_SOCKET,         STATE_LISTEN,                 listen_handler},
+            {STATE_LISTEN,         STATE_CREATE_GUI_THREAD,                 create_gui_thread_handler},
+            {STATE_CREATE_GUI_THREAD,         STATE_CREATE_WINDOW,                 create_window_handler},
             {STATE_CREATE_WINDOW,        STATE_START_HANDSHAKE,      start_handshake_handler},
             {STATE_START_HANDSHAKE,      STATE_CREATE_HANDSHAKE_TIMER,   create_handshake_timer_handler},
             {STATE_CREATE_HANDSHAKE_TIMER,      STATE_WAIT_FOR_SYN_ACK,   wait_for_syn_ack_handler},
@@ -195,6 +214,11 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
         return STATE_ERROR;
     }
 
+    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> gui_addr_struct, 61001, err) != 0)
+    {
+        return STATE_ERROR;
+    }
+
     return STATE_CREATE_SOCKET;
 }
 
@@ -205,6 +229,12 @@ static int create_socket_handler(struct fsm_context *context, struct fsm_error *
     SET_TRACE(context, "in create socket", "STATE_CREATE_SOCKET");
     ctx -> args -> sockfd = socket_create(ctx -> args -> client_addr_struct.ss_family, SOCK_DGRAM, 0, err);
     if (ctx -> args -> sockfd == -1)
+    {
+        return STATE_ERROR;
+    }
+
+    ctx -> args -> client_gui_fd = socket_create(ctx -> args -> client_addr_struct.ss_family, SOCK_STREAM, 0, err);
+    if (ctx -> args -> client_gui_fd == -1)
     {
         return STATE_ERROR;
     }
@@ -222,8 +252,43 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
         return STATE_ERROR;
     }
 
-    return STATE_CREATE_WINDOW;
+    if (socket_bind(ctx -> args -> client_gui_fd, &ctx -> args -> gui_addr_struct, err))
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_LISTEN;
 }
+
+static int listen_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in start listening", "STATE_START_LISTENING");
+    if (start_listening(ctx -> args -> client_gui_fd, SOMAXCONN, err))
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_CREATE_GUI_THREAD;
+}
+
+static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context      *ctx;
+    int                     result;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_CREATE_GUI_THREAD");
+    result = pthread_create(&ctx -> args -> accept_gui_thread, NULL, init_gui_function,
+                            (void *) ctx);
+    if (result < 0)
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_WAIT;
+}
+
 
 static int create_window_handler(struct fsm_context *context, struct fsm_error *err)
 {
@@ -247,6 +312,11 @@ static int start_handshake_handler(struct fsm_context *context, struct fsm_error
     if (send_syn_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> window, err))
     {
         return STATE_ERROR;
+    }
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
     }
 
     return STATE_CREATE_HANDSHAKE_TIMER;
@@ -289,6 +359,12 @@ static int wait_for_syn_ack_handler(struct fsm_context *context, struct fsm_erro
         {
             return STATE_ERROR;
         }
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
+        }
+
         printf("Server packet with seq number: %u received\n", ctx -> args -> temp_packet.hd.seq_number);
 
         if (ctx -> args -> temp_packet.hd.flags == SYNACK)
@@ -307,6 +383,11 @@ static int send_handshake_ack_handler(struct fsm_context *context, struct fsm_er
     SET_TRACE(context, "in connect socket", "STATE_SEND_HANDSHAKE_ACK");
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                          ctx -> args -> window, &ctx -> args -> temp_packet, err);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
 
     return STATE_CREATE_RECV_THREAD;
 }
@@ -411,6 +492,11 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
         return STATE_ERROR;
     }
 
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
+
     return STATE_CREATE_TIMER_THREAD;
 }
 
@@ -474,7 +560,7 @@ static int error_handler(struct fsm_context *context, struct fsm_error *err)
     return STATE_CLEANUP;
 }
 
-static int listen_handler(struct fsm_context *context, struct fsm_error *err)
+static int wait_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
     ssize_t result;
@@ -489,6 +575,12 @@ static int listen_handler(struct fsm_context *context, struct fsm_error *err)
         {
             return STATE_ERROR;
         }
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
+        }
+
         printf("Server packet with seq number: %u received\n", ctx -> args -> temp_packet.hd.seq_number);
 
         return STATE_CHECK_ACK_NUMBER;
@@ -527,7 +619,7 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
         packet pt = ctx -> args -> temp_packet;
         create_handshake_ack_packet(ctx->args->sockfd, &ctx -> args -> server_addr_struct,
                                     ctx -> args -> window,&ctx -> args -> temp_packet, err);
-        return STATE_LISTEN;
+        return STATE_WAIT;
     }
 
     return STATE_SEND_PACKET;
@@ -541,7 +633,7 @@ static int remove_packet_from_window_handler(struct fsm_context *context, struct
 
     remove_packet_from_window(ctx -> args -> window, &ctx -> args -> temp_packet);
 
-    return STATE_LISTEN;
+    return STATE_WAIT;
 }
 
 static int send_packet_handler(struct fsm_context *context, struct fsm_error *err)
@@ -553,7 +645,12 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                          ctx -> args -> window, &ctx -> args -> temp_packet, err);
 
-    return STATE_LISTEN;
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
+
+    return STATE_WAIT;
 }
 
 static int termination_handler(struct fsm_context *context, struct fsm_error *err)
@@ -567,17 +664,17 @@ void *init_recv_function(void *ptr)
     struct fsm_error err;
 
     static struct fsm_transition transitions[] = {
-            {FSM_INIT,                  STATE_LISTEN,             listen_handler},
-            {STATE_LISTEN,              STATE_CHECK_ACK_NUMBER,   check_ack_number_handler},
-            {STATE_CHECK_ACK_NUMBER,    STATE_REMOVE_FROM_WINDOW, remove_packet_from_window_handler},
-            {STATE_CHECK_ACK_NUMBER,    STATE_SEND_PACKET,        send_packet_handler},
-            {STATE_CHECK_ACK_NUMBER,    STATE_TERMINATION,        send_packet_handler},
-            {STATE_CHECK_ACK_NUMBER,    STATE_LISTEN,             listen_handler},
-            {STATE_REMOVE_FROM_WINDOW,  STATE_LISTEN,             listen_handler},
-            {STATE_SEND_PACKET,         STATE_LISTEN,             listen_handler},
-            {STATE_LISTEN,              STATE_ERROR,              error_handler},
-            {STATE_LISTEN,              FSM_EXIT,                 NULL},
-            {STATE_ERROR,               FSM_EXIT,                 NULL},
+            {FSM_INIT,                 STATE_WAIT,               wait_handler},
+            {STATE_WAIT,               STATE_CHECK_ACK_NUMBER,   check_ack_number_handler},
+            {STATE_CHECK_ACK_NUMBER,   STATE_REMOVE_FROM_WINDOW, remove_packet_from_window_handler},
+            {STATE_CHECK_ACK_NUMBER,   STATE_SEND_PACKET,        send_packet_handler},
+            {STATE_CHECK_ACK_NUMBER,   STATE_TERMINATION,        send_packet_handler},
+            {STATE_CHECK_ACK_NUMBER,   STATE_WAIT,               wait_handler},
+            {STATE_REMOVE_FROM_WINDOW, STATE_WAIT,               wait_handler},
+            {STATE_SEND_PACKET,        STATE_WAIT,               wait_handler},
+            {STATE_WAIT,               STATE_ERROR,              error_handler},
+            {STATE_WAIT,               FSM_EXIT, NULL},
+            {STATE_ERROR,              FSM_EXIT, NULL},
     };
 
     fsm_run(ctx, &err, 0, 0 , transitions);
@@ -601,8 +698,14 @@ void *init_timer_function(void *ptr)
         sleep(TIMER_TIME);
         if (ctx -> args -> window[index].is_packet_full)
         {
-            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct, ctx->args->window,
-                        &ctx->args->window[index].pt, &err);
+            send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                        ctx -> args -> window, &ctx -> args -> window[index].pt, &err);
+
+            if (ctx -> args -> is_connected_gui)
+            {
+                send_stats_gui(ctx -> args -> connected_gui_fd, RESENT_PACKET);
+            }
+
             counter++;
         }
     }
@@ -627,10 +730,26 @@ void *init_window_checker_function(void *ptr)
             create_timer_thread_handler(ctx, err);
             printf("sent packet with seq number %u\n", pt.hd.seq_number);
             pop(&ctx -> args -> head);
+
+            if (ctx -> args -> is_connected_gui)
+            {
+                send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+            }
         }
     }
 
     ctx -> args -> is_buffered = 0;
+
+    return NULL;
+}
+
+void *init_gui_function(void *ptr)
+{
+    struct fsm_context *ctx = (struct fsm_context*) ptr;
+    struct fsm_error err;
+
+    ctx -> args -> connected_gui_fd = socket_accept_connection(ctx -> args -> client_gui_fd, &err);
+    ctx -> args -> is_connected_gui++;
 
     return NULL;
 }
