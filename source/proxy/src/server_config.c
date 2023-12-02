@@ -88,6 +88,7 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
         ipv4_addr->sin_port = net_port;
         vaddr               = (void *)&(((struct sockaddr_in *)addr)->sin_addr);
         addr->ss_family = AF_INET;
+        printf("IP: %u", ipv4_addr->sin_addr.s_addr);
     }
     else if(inet_pton(AF_INET6, address, &(((struct sockaddr_in6 *)addr)->sin6_addr)) == 1)
     {
