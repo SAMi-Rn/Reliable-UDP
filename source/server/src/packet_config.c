@@ -128,7 +128,7 @@ int valid_connection(struct sockaddr_storage *addr)
 
 int check_seq_number(uint32_t seq_number, uint32_t expected_seq_number)
 {
-//    printf("expected: %u\n", expected_seq_number);
+    printf("expected: %u\n", expected_seq_number);
     return check_if_equal(seq_number, expected_seq_number) || check_if_less(seq_number, expected_seq_number);
 }
 
