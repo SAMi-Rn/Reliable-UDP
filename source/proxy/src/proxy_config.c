@@ -109,24 +109,24 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
     int first_menu;
     int second_menu;
     int third_menu;
-    char menu[100];
+    char menu[200];
     char client_menu[100];
 
     snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
-                                  "1. Client Losiness:\n"
-                                  "2. Server Losiness:\n"
+                                  "1. Client Losiness\n"
+                                  "2. Server Losiness\n"
                                   "3. Data Corruption\n"
-                                  "4. Exit:\n"
+                                  "4. Exit\n"
                                   "Enter your Answer: ");
 
-    snprintf(client_menu, sizeof (client_menu), "Client Drop and Delay rate\n"
-                                  "1. Drop Rate: \n"
-                                  "2. Delay Rate: \n"
-                                  "3. Back \n"
+    snprintf(client_menu, sizeof (client_menu), "Client Drop and Delay rate:\n"
+                                  "1. Drop Rate\n"
+                                  "2. Delay Rate\n"
+                                  "3. Back\n"
                                   "Enter your Answer: ");
     do {
         printf("%s", menu);
-        first_menu = read_menu(3);
+        first_menu = read_menu(4);
         switch (first_menu)
         {
             case 1:
@@ -138,7 +138,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                     switch (second_menu)
                     {
                         case 1:
-                            printf("Enter Client's Drop Rate :");
+                            printf("Enter Client's Drop Rate: ");
                             int drop =  read_menu(100);
                             if(drop == -1)
                             {
@@ -148,7 +148,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                             *client_drop = (uint8_t) drop;
                             break;
                         case 2:
-                            printf("Enter Client's Delay Rate :");
+                            printf("Enter Client's Delay Rate: ");
                             int delay =read_menu(100);
                             if(delay == -1)
                             {
@@ -170,15 +170,16 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
             case 2:
                 do
                 {
-                    printf("Server Drop and Delay rate\n");
-                    printf("1. Drop Rate: \n");
-                    printf("2. Delay Rate: \n");
+                    printf("Server Drop and Delay rate:\n");
+                    printf("1. Drop Rate \n");
+                    printf("2. Delay Rate \n");
                     printf("3. Back \n");
+                    printf("Enter your Answer: ");
                     third_menu = read_menu(3);
                     switch (third_menu)
                     {
                         case 1:
-                            printf("Enter Server's Drop Rate :");
+                            printf("Enter Server's Drop Rate: ");
                             int drop =  read_menu(100);
                             if(drop == -1)
                             {
@@ -189,7 +190,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                             break;
 
                         case 2:
-                            printf("Enter Server's Delay Rate :");
+                            printf("Enter Server's Delay Rate: ");
                             int delay =read_menu(100);
                             if(delay == -1)
                             {
@@ -202,7 +203,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                         case 3:
                             break;
                         case -1:
-                            printf("It is not valid, try again\n");
+                            printf("It is not valid, try again\n\n");
                             break;
                         default:
                             break;
@@ -210,7 +211,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                 }while(third_menu != 3);
                 break;
             case 3:
-                printf("Enter Data Corruption's Rate :");
+                printf("Enter Data Corruption's Rate: ");
                 int rate =  read_menu(100);
                 if(rate == -1)
                 {
@@ -253,10 +254,9 @@ int read_menu(int upperbound)
     }
     if((int) temp > upperbound)
     {
-        printf("larger than upperbound!\n");
+        printf("\nlarger than upperbound!\n");
         return -1;
     }
-    printf("Temp : %d\n\n", (int) temp);
     return (int) temp ;
 }
 
