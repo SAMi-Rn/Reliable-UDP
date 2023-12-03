@@ -153,7 +153,7 @@ int send_stats_gui(int sockfd, uint8_t stat)
     ssize_t result;
 
     converted_size  = htonl(stat);
-    result          = write(sockfd, &converted_size, sizeof(converted_size));
+    result          = write(sockfd, &stat, sizeof(stat));
 
     if (result <= 0)
     {
