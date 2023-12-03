@@ -109,6 +109,11 @@ typedef struct arguments
     uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate, corruption_rate;
 } arguments;
 
+
+
+pthread_mutex_t num_of_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+
 int main(int argc, char **argv)
 {
 
@@ -434,8 +439,11 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     SET_TRACE(context, "", "STATE_CLIENT_DELAY_PACKET");
     printf("Client packet with seq number: %u ack number: %u flags: %u delayed\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
 
+    pthread_mutex_lock(&num_of_threads_mutex);
     ctx -> args -> num_of_threads++;
     temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
+
+
     if (temp_thread_pool == NULL)
     {
         return STATE_ERROR;
@@ -444,7 +452,7 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx -> args -> thread_pool = temp_thread_pool;
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_client_delay_thread, (void *) ctx);
-
+    pthread_mutex_unlock(&num_of_threads_mutex);
     if (ctx -> args -> is_connected_gui)
     {
         send_stats_gui(ctx -> args -> connected_gui_fd, DELAYED_CLIENT_PACKET);
@@ -607,8 +615,11 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx = context;
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_SERVER_DELAY_PACKET");
+    pthread_mutex_lock(&num_of_threads_mutex);
     ctx -> args -> num_of_threads++;
     temp_thread_pool = (pthread_t *) realloc(temp_thread_pool, sizeof(pthread_t) * ctx -> args -> num_of_threads);
+
+
     if (temp_thread_pool == NULL)
     {
         return STATE_ERROR;
@@ -617,7 +628,7 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
     ctx -> args -> thread_pool = temp_thread_pool;
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_server_delay_thread, (void *) ctx);
-
+    pthread_mutex_unlock(&num_of_threads_mutex);
     if (ctx -> args -> is_connected_gui)
     {
         send_stats_gui(ctx -> args -> connected_gui_fd, DELAYED_SERVER_PACKET);
