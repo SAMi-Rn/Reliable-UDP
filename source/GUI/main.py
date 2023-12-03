@@ -34,6 +34,8 @@ server_names = [
     'Proxy'
 ]
 
+plt.style.use('dark_background')
+
 
 def connect_to_server(server_id, host, port, data):
     client_socket = socket.socket()
@@ -55,9 +57,10 @@ def connect_to_server(server_id, host, port, data):
 
 def update_plot(i, ax, server_id, data):
     if data[server_id]:
+        ax.clear()
+
         times = [t for _, t in data[server_id]]
         values = [v for v, _ in data[server_id]]
-        ax.clear()
 
         packet_count_per_type = {ptype: 0 for ptype in range(len(colors))}
 
@@ -86,9 +89,9 @@ def start_plot(server_id, data):
 
 def start(data):
     # Use descriptive names for the servers
-    server_descriptions = [('Server', '192.168.1.80', 61000),
-                           ('Client', '192.168.1.80', 61001),
-                           ('Proxy', '192.168.1.80', 61060)]
+    server_descriptions = [('Server', '10.0.0.116', 61000),
+                           ('Client', '10.0.0.116', 61001),
+                           ('Proxy', '10.0.0.116', 61060)]
     processes = []
 
     for i, (description, host, port) in enumerate(server_descriptions):
