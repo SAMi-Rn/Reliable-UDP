@@ -37,7 +37,6 @@ struct fsm_transition {
 };
 
 int fsm_run(struct fsm_context *context, struct fsm_error *err,
-            int *from_state, int *to_state,
             const struct fsm_transition transitions[]);
 
 #define SET_ERROR(err, msg) \
