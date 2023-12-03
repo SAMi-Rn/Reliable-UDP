@@ -26,10 +26,10 @@ typedef struct header
     uint32_t                    ack_number;
     uint8_t                     flags;
     uint8_t                     window_size;
+    uint8_t                     checksum;
     struct timeval              tv;
-    struct sockaddr_storage     src_ip;
-    struct sockaddr_storage     dst_ip;
 } header;
+
 
 typedef struct packet
 {

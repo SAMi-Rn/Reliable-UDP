@@ -1,73 +1,5 @@
 #include "proxy_config.h"
 
-int identify_sender(struct sockaddr_storage *dest_ip,
-        struct sockaddr_storage *client, struct sockaddr_storage *server)
-{
-    if(dest_ip->ss_family == AF_INET)
-    {
-        struct sockaddr_in          *ipv4_dest_ip_addr;
-        ipv4_dest_ip_addr           = (struct sockaddr_in *)dest_ip;
-
-        if (client->ss_family == AF_INET)
-        {
-           struct sockaddr_in       *ipv4_client_addr;
-           ipv4_client_addr         = (struct sockaddr_in *) client;
-
-           if (ipv4_dest_ip_addr->sin_addr.s_addr == ipv4_client_addr->sin_addr.s_addr)
-           {
-              return CLIENT;
-           }
-        }
-        else if (server->ss_family == AF_INET)
-        {
-            struct sockaddr_in      *ipv4_server_addr;
-            ipv4_server_addr        = (struct sockaddr_in *) client;
-
-            if (ipv4_dest_ip_addr->sin_addr.s_addr == ipv4_server_addr->sin_addr.s_addr)
-            {
-                return SERVER;
-            }
-        }
-        else
-        {
-            return UNKNOWN;
-        }
-    }
-    else if(dest_ip->ss_family == AF_INET6)
-    {
-        struct sockaddr_in6          *ipv6_dest_ip_addr;
-
-        ipv6_dest_ip_addr            = (struct sockaddr_in6 *)dest_ip;
-
-        if (client->ss_family == AF_INET)
-        {
-            struct sockaddr_in6      *ipv6_client_addr;
-            ipv6_client_addr         = (struct sockaddr_in6 *) client;
-
-            if (ipv6_dest_ip_addr->sin6_addr.s6_addr == ipv6_client_addr->sin6_addr.s6_addr)
-            {
-                return CLIENT;
-            }
-        }
-        else if (server->ss_family == AF_INET)
-        {
-            struct sockaddr_in6      *ipv6_server_addr;
-            ipv6_server_addr         = (struct sockaddr_in6 *) client;
-
-            if (ipv6_dest_ip_addr->sin6_addr.s6_addr == ipv6_server_addr->sin6_addr.s6_addr)
-            {
-                return SERVER;
-            }
-        }
-        else
-        {
-            return UNKNOWN;
-        }
-    }
-
-    return UNKNOWN;
-}
-
 int random_number(void)
 {
     return rand() % 101;
@@ -78,10 +10,8 @@ int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
     printf("delay: %u drop %u\n", delay_rate, drop_rate);
     if (drop_rate > 0)
     {
-        printf("about to calculate drop rate\n");
         if (calculate_drop(drop_rate))
         {
-            printf("dropped\n");
             return DROP;
         }
     }
@@ -137,11 +67,13 @@ int receive_packet(int sockfd, struct packet *pt)
 
     client_addr_len = sizeof(client_addr);
     result = recvfrom(sockfd, &temp_pt, sizeof(temp_pt), 0, (struct sockaddr *) &client_addr, &client_addr_len);
+
     if (result == -1)
     {
         printf("Error: %s\n", strerror(errno));
         return -1;
     }
+
     *pt = temp_pt;
 
     return 0;
@@ -158,21 +90,25 @@ socklen_t size_of_address(struct sockaddr_storage *addr)
 }
 
 void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay) {
-//    char *line = NULL;
-//    size_t len = 0;
-//    ssize_t read;
     int first_menu;
     int second_menu;
     int third_menu;
     char menu[100];
+    char client_menu[100];
+
     snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
                                   "1. Client Losiness:\n"
                                   "2. Server Losiness:\n"
                                   "3. Exit:\n"
                                   "Enter your Answer: ");
 
+    snprintf(client_menu, sizeof (client_menu), "Client Drop and Delay rate\n"
+                                  "1. Drop Rate: \n"
+                                  "2. Delay Rate: \n"
+                                  "3. Back \n"
+                                  "Enter your Answer: ");
     do {
-        printf("%s\n", menu);
+        printf("%s", menu);
         first_menu = read_menu(3);
         switch (first_menu)
         {
@@ -180,10 +116,7 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                 printf("%d\n", first_menu);
                 do
                 {
-                    printf("Client Drop and Delay rate\n");
-                    printf("1. Drop Rate: \n");
-                    printf("2. Delay Rate: \n");
-                    printf("3. Back \n");
+                    printf("%s", client_menu);
                     second_menu = read_menu(3);
                     switch (second_menu)
                     {
@@ -267,24 +200,6 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                 break;
         }
     } while (1);
-    /*
-     * User entered C (Client)
-     *      Enter B to go back, D for drop, L for delay
-     *      1. Drop
-     *      2. Delay
-     *      3. Back
-     *      entered : 2
-     *          Enter your drop rate: 20 (change the client drop rate to 20!)
-     *
-     *          return
-     */
-
-//    printf("read: %s\nsize: %zd", line, strlen(line));
-//    *buffer = (char *) malloc(strlen(line));
-//    strcpy(*buffer, line);
-
-
-
 }
 
 int read_menu(int upperbound)
