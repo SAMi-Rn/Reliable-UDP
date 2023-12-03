@@ -12,8 +12,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                                     char **client_addr, char **proxy_addr, char **server_port_str,
                                     char **client_port_str, uint8_t *client_delay_rate,
                                     uint8_t *client_drop_rate, uint8_t *server_delay_rate,
-                                    uint8_t *server_drop_rate, uint8_t *window_size,
-                                    struct fsm_error *err)
+                                    uint8_t *server_drop_rate, struct fsm_error *err)
 {
     int opt;
     bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag, w_flag;
@@ -28,9 +27,8 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
     P_flag = 0;
     L_flag = 0;
     l_flag = 0;
-    w_flag = 0;
 
-    while ((opt = getopt(argc, argv, "C:c:S:s:P:w:D:d:L:l:h")) != -1)
+    while ((opt = getopt(argc, argv, "C:c:S:s:P:D:d:L:l:h")) != -1)
     {
         switch (opt)
         {
@@ -216,29 +214,6 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                 }
                 break;
             }
-            case 'w':
-            {
-                if (w_flag)
-                {
-                    char message[40];
-
-                    snprintf(message, sizeof(message), "option '-w' can only be passed in once.");
-                    usage(argv[0]);
-                    SET_ERROR(err, message);
-
-                    return -1;
-                }
-
-                w_flag++;
-                char *temp;
-                temp = optarg;
-
-                if (convert_to_int(argv[0], temp, window_size, err) == -1)
-                {
-                    return -1;
-                }
-                break;
-            }
             case 'h':
             {
                 usage(argv[0]);
@@ -277,7 +252,6 @@ void usage(const char *program_name)
     fputs("  -S <value>             Option 'S' (required) with value, Sets the IP server_addr\n", stderr);
     fputs("  -s <value>             Option 's' (required) with value, Sets the server port\n", stderr);
     fputs("  -P <value>             Option 'P' (required) with value, Sets the IP proxy_addr\n", stderr);
-    fputs("  -w <value>             Option 'w' (required) with value, Sets the window size\n", stderr);
     fputs("  -D <value>             Option 'D' (required) with value, Sets the client drop rate\n", stderr);
     fputs("  -d <value>             Option 'd' (required) with value, Sets the server drop rate\n", stderr);
     fputs("  -L <value>             Option 'L' (required) with value, Sets the client delay rate\n", stderr);

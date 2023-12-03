@@ -260,9 +260,15 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     while (!exit_flag)
     {
         result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+
         if (result == -1)
         {
             return STATE_ERROR;
+        }
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
         return STATE_CHECK_SEQ_NUMBER;
@@ -301,6 +307,11 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
 
     send_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                 &ctx -> args -> temp_packet, err);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
 
     return STATE_UPDATE_SEQ_NUMBER;
 }
@@ -352,6 +363,11 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
             return STATE_ERROR;
         }
 
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
+        }
+
         if (ctx -> args -> temp_packet.hd.flags == ACK &&
             check_if_equal(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
         {
@@ -380,6 +396,11 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                              &ctx -> args -> temp_packet, err);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
 
     if (check_if_less(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
     {
@@ -451,25 +472,35 @@ void *init_timer_function(void *ptr)
         sleep(TIMER_TIME);
         if (ctx -> args -> is_handshake_ack)
         {
-            printf("Sending syn ack again\n");
-            printf("temp seq: %u\n", packet_to_send.hd.seq_number);
-            printf("temp ack: %u\n", packet_to_send.hd.ack_number);
-            printf("temp flags: %u\n", packet_to_send.hd.flags);
+//            printf("Sending syn ack again\n");
+//            printf("temp seq: %u\n", packet_to_send.hd.seq_number);
+//            printf("temp ack: %u\n", packet_to_send.hd.ack_number);
+//            printf("temp flags: %u\n", packet_to_send.hd.flags);
             send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
                         &packet_to_send, &err);
+
+            if (ctx -> args -> is_connected_gui)
+            {
+                send_stats_gui(ctx -> args -> connected_gui_fd, RESENT_PACKET);
+            }
+
             counter++;
         }
     }
 
     pthread_exit(NULL);
 }
+
 void *init_gui_function(void *ptr)
 {
     struct fsm_context *ctx = (struct fsm_context*) ptr;
     struct fsm_error err;
 
-    ctx -> args -> connected_gui_fd = socket_accept_connection(ctx -> args -> server_gui_fd, &err);
-    ctx -> args -> is_connected_gui++;
+    while(!exit_flag)
+    {
+        ctx->args->connected_gui_fd = socket_accept_connection(ctx->args->server_gui_fd, &err);
+        ctx->args->is_connected_gui++;
+    }
 
     return NULL;
 }
