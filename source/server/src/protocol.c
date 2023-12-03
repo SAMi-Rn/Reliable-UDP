@@ -184,12 +184,6 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packe
     return 0;
 }
 
-int recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
-{
-    // check if incoming ack is same as expected ack
-    return 0;
-}
-
 int recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
 {
     // send ack and then check if all packets have been acked
