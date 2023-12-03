@@ -496,8 +496,11 @@ void *init_gui_function(void *ptr)
     struct fsm_context *ctx = (struct fsm_context*) ptr;
     struct fsm_error err;
 
-    ctx -> args -> connected_gui_fd = socket_accept_connection(ctx -> args -> server_gui_fd, &err);
-    ctx -> args -> is_connected_gui++;
+    while(!exit_flag)
+    {
+        ctx->args->connected_gui_fd = socket_accept_connection(ctx->args->server_gui_fd, &err);
+        ctx->args->is_connected_gui++;
+    }
 
     return NULL;
 }
