@@ -286,7 +286,7 @@ static int create_gui_thread_handler(struct fsm_context *context, struct fsm_err
         return STATE_ERROR;
     }
 
-    return STATE_WAIT;
+    return STATE_CREATE_WINDOW;
 }
 
 
