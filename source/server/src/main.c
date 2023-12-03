@@ -31,12 +31,15 @@ enum gui_stats
 {
     SENT_PACKET,
     RECEIVED_PACKET,
+    RECEIVED_ACK,
     RESENT_PACKET,
     DROPPED_CLIENT_PACKET,
     DELAYED_CLIENT_PACKET,
     DROPPED_SERVER_PACKET,
-    DELAYED_SERVER_PACKET
+    DELAYED_SERVER_PACKET,
+    CORRUPTED_DATA
 };
+
 
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);

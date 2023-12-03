@@ -88,6 +88,7 @@ def start_plot(server_id, data):
 
 
 def start(data):
+
     server_descriptions = [('Server', '10.0.0.116', 61000),
                            ('Client', '10.0.0.116', 61001),
                            ('Proxy', '10.0.0.116', 61060)]
