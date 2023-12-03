@@ -1,142 +1,72 @@
-A 
-
-
-
+A
 A-  prefix (also an- before a vowel sound) not, without (amoral). [greek]
-
 Aa  abbr. 1 automobile association. 2 alcoholics anonymous. 3 anti-aircraft.
-
 Aardvark  n. Mammal with a tubular snout and a long tongue, feeding on termites. [afrikaans]
-
 Ab-  prefix off, away, from (abduct). [latin]
-
 Aback  adv.  take aback surprise, disconcert. [old english: related to *a2]
-
 Abacus  n. (pl. -cuses) 1 frame with wires along which beads are slid for calculating. 2 archit. Flat slab on top of a capital. [latin from greek from hebrew]
-
 Abaft  naut. —adv. In the stern half of a ship. —prep. Nearer the stern than. [from *a2, -baft: see *aft]
-
 Abandon  —v. 1 give up. 2 forsake, desert. 3 (often foll. By to; often refl.) Yield to a passion, another's control, etc. —n. Freedom from inhibitions.  abandonment n. [french: related to *ad-, *ban]
-
 Abandoned  adj. 1 deserted, forsaken. 2 unrestrained, profligate.
-
 Abase  v. (-sing) (also refl.) Humiliate, degrade.  abasement n. [french: related to *ad-, *base2]
-
 Abashed  predic. Adj. Embarrassed, disconcerted. [french es- *ex-1, baïr astound]
-
 Abate  v. (-ting) make or become less strong etc.; diminish.  abatement n. [french abatre from latin batt(u)o beat]
-
 Abattoir  n. Slaughterhouse. [french abatre fell, as *abate]
-
 Abbacy  n. (pl. -ies) office or jurisdiction of an abbot or abbess. [latin: related to *abbot]
-
 Abbé  n. (in france) abbot or priest. [french from latin: related to *abbot]
-
 Abbess  n. Head of a community of nuns.
-
 Abbey  n. (pl. -s) 1 building(s) occupied by a community of monks or nuns. 2 the community itself. 3 building that was once an abbey.
-
 Abbot  n. Head of a community of monks. [old english from latin abbas]
-
 Abbreviate  v. (-ting) shorten, esp. Represent (a word etc.) By a part of it.  abbreviation n. [latin: related to *brief]
-
 Abc  n. 1 the alphabet. 2 rudiments of a subject. 3 alphabetical guide.
-
 Abdicate  v. (-ting) 1 (usu. Absol.) Give up or renounce (the throne). 2 renounce (a duty, right, etc.).  abdication n. [latin dico declare]
-
 Abdomen  n. 1 the belly, including the stomach, bowels, etc. 2 the hinder part of an insect etc.  abdominal adj. [latin]
-
 Abduct  v. Carry off or kidnap illegally.  abduction n. Abductor n. [latin duco lead]
-
 Abeam  adv. At right angles to a ship's or an aircraft's length.
-
 Aberdeen angus  n. Animal of a scottish breed of hornless black cattle. [aberdeen in scotland]
-
 Aberdonian  —adj. Of aberdeen. —n. Native or citizen of aberdeen. [medieval latin]
-
 Aberrant  adj. Deviating from what is normal or accepted. [latin: related to *err]
-
 Aberration  n. 1 aberrant behaviour; moral or mental lapse. 2 biol. Deviation from a normal type. 3 distortion of an image because of a defect in a lens or mirror. 4 astron. Apparent displacement of a celestial body.
-
 Abet  v. (-tt-) (usu. In aid and abet) encourage or assist (an offender or offence). [french: related to *ad-, *bait]
-
 Abeyance  n. (usu. Prec. By in, into) temporary disuse. [french: related to *ad-, beer gape]
-
 Abhor  v. (-rr-) detest; regard with disgust. [latin: related to *horror
-
-Abhorrence  n. Disgust; detestation.
-
+Aborrence  n. Disgust; detestation.
 Abhorrent  adj. (often foll. By to) disgusting or hateful.
-
 Abide  v. (-ding; past abided or rarely abode) 1 (usu. In neg.) Tolerate, endure (can't abide him). 2 (foll. By by) a act in accordance with (abide by the rules). B keep (a promise). 3 archaic remain, continue. [old english a- intensive prefix, *bide]
-
 Abiding  adj. Enduring, permanent.
-
 Ability  n. (pl. -ies) 1 (often foll. By to + infin.) Capacity or power. 2 cleverness, talent. [french: related to *able]
-
 -ability  suffix forming nouns of quality from, or corresponding to, adjectives in -able.
-
 Ab initio  adv. From the beginning. [latin]
-
 Abject  adj. Miserable, wretched; degraded; despicable.  abjection n. [latin jacio -ject- throw]
-
 Abjure  v. (-ring) renounce on oath (an opinion, cause, etc.).  abjuration n. [latin juro swear]
-
 Ablative  gram. —n. Case (in latin) of nouns and pronouns indicating an agent, instrument, or location. —adj. Of or in the ablative. [latin ablatus taken away]
-
 Ablaze  predic. Adj. & adv. 1 on fire. 2 glittering, glowing. 3 greatly excited.
-
 Able  adj. (abler, ablest) 1 (often foll. By to + infin.; used esp. In is able, will be able, etc., replacing tenses of can) having the capacity or power (not able to come). 2 talented, clever.  ably adv. [latin habilis]
-
 -able  suffix forming adjectives meaning: 1 that may or must be (eatable; payable). 2 that can be made the subject of (dutiable; objectionable). 3 relevant to or in accordance with (fashionable; seasonable). [latin -abilis]
-
 Able-bodied  adj. Fit, healthy.
-
 Able-bodied seaman  n. Ordinary trained seaman.
-
 Ablution  n. (usu. In pl.) 1 ceremonial washing of the hands, sacred vessels, etc. 2 colloq. A ordinary bodily washing. B place for this. [latin ablutio from luo lut- wash]
-
 -ably  suffix forming adverbs corresponding to adjectives in -able.
-
 Abm  abbr. Anti-ballistic missile.
-
 Abnegate  v. (-ting) give up or renounce (a pleasure or right etc.). [latin nego deny]
-
 Abnegation  n. Denial; renunciation of a doctrine.
-
 Abnormal  adj. Deviating from the norm; exceptional.  abnormality n. (pl. -ies). Abnormally adv. [french: related to *anomalous]
-
 Abo  (also abo) austral. Slang usu. Offens. —n. (pl. -s) aboriginal. —adj. Aboriginal. [abbreviation]
-
 Aboard  adv. & prep. On or into (a ship, aircraft, etc.). [from *a2]
-
 Abode1  n. Dwelling-place. [related to *abide]
-
 Abode2  see *abide.
-
-Abolish  v. Put an end to (esp. A custom or institution). [latin aboleo destroy]
-
+Abolih  v. Put an end to (esp. A custom or institution). [latin aboleo destroy]
 Abolition  n. Abolishing or being abolished.  abolitionist n.
-
 A-bomb  n. = *atomic bomb. [a for *atomic]
-
 Abominable  adj. 1 detestable, loathsome. 2 colloq. Very unpleasant (abominable weather).  abominably adv. [latin abominor deprecate]
-
 Abominable snowman  n. Supposed manlike or bearlike himalayan animal; yeti.
-
 Abominate  v. (-ting) detest, loathe.  abomination n. [latin: related to *abominable]
-
 Aboriginal  —adj. 1 indigenous, inhabiting a land from the earliest times, esp. Before the arrival of colonists. 2 (usu. Aboriginal) of australian aborigines. —n. 1 aboriginal inhabitant. 2 (usu. Aboriginal) aboriginal inhabitant of australia. [latin: related to *origin]
-
 Aborigine  n. (usu. In pl.) 1 aboriginal inhabitant. 2 (usu. Aborigine) aboriginal inhabitant of australia.
-
 Usage  when referring to the people, aboriginal is preferred for the singular form and aborigines for the plural, although aboriginals is also acceptable.
-
 Abort  v. 1 miscarry. 2 a effect abortion of (a foetus). B effect abortion in (a mother). 3 end or cause (a project etc.) To end before completion. [latin orior be born]
-
 Abortion  n. 1 natural or (esp.) Induced expulsion of a foetus from the womb before it is able to survive independently. 2 stunted or deformed creature or thing. 3 failed project or action.  abortionist n.
 Aboriginal  —adj. 1 indigenous, inhabiting a land from the earliest times, esp. Before the arrival of colonists. 2 (usu. Aboriginal) of australian aborigines. —n. 1 aboriginal inhabitant. 2 (usu. Aboriginal) aboriginal inhabitant of australia. [latin: related to *origin]
-
 Aborigine  n. (usu. In pl.) 1 aboriginal inhabitant. 2 (usu. Aborigine) aboriginal inhabitant of australia.
 
 Usage  when referring to the people, aboriginal is preferred for the singular form and aborigines for the plural, although aboriginals is also acceptable.
