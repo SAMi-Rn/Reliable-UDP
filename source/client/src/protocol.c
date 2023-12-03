@@ -1,16 +1,4 @@
-#include <pthread.h>
 #include "protocol.h"
-
-int protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window, struct fsm_error *err)
-{
-    struct packet temp_packet;
-    send_syn_packet(sockfd, addr, window, err);
-    receive_packet(sockfd, window, &temp_packet, err);
-    remove_packet_from_window(window, &temp_packet);
-    read_received_packet(sockfd, addr, window, &temp_packet, err);
-
-    return 0;
-}
 
 int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
 {
@@ -101,6 +89,7 @@ int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packe
     packet_to_send.hd.flags                 = SYN;
     packet_to_send.hd.window_size           = window_size;
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -116,6 +105,8 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_p
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -131,6 +122,8 @@ int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, 1);
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -147,6 +140,7 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -163,6 +157,7 @@ int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_pack
     packet_to_send.hd.flags             = PSHACK;
     packet_to_send.hd.window_size       = window_size;
     strcpy(packet_to_send.data, data);
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -178,6 +173,8 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.ack_number        = create_ack_number(pt->hd.seq_number, strlen(pt->data));
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
+    memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     add_packet_to_window(window, &packet_to_send);
@@ -246,6 +243,7 @@ int create_data_packet(struct packet *pt, struct sent_packet *window, char *data
     packet_to_send.hd.flags             = PSHACK;
     packet_to_send.hd.window_size       = window_size;
     strcpy(packet_to_send.data, data);
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     *pt = packet_to_send;
     add_packet_to_window(window, &packet_to_send);
@@ -262,9 +260,43 @@ int create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struc
     packet_to_send.hd.flags             = create_flags(pt->hd.flags);
     packet_to_send.hd.window_size       = window_size;
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
+    calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
     send_packet(sockfd, addr, window, &packet_to_send, err);
     *pt = packet_to_send;
 
     return 0;
+}
+
+int calculate_checksum(uint8_t *checksum, const char *data, size_t length)
+{
+    *checksum = checksum_one(data, length) * checksum_two(data, length);
+
+    return 0;
+}
+
+unsigned char checksum_one(const char *data, size_t length)
+{
+    unsigned char result;
+
+    result = 0;
+    for (size_t i = 0; i < length; i++)
+    {
+       result += data[i] * 34;
+    }
+
+    return result;
+}
+
+unsigned char checksum_two(const char *data, size_t length)
+{
+    unsigned char result;
+
+    result = 0;
+    for (size_t i = 0; i < length; i++)
+    {
+        result ^= data[i];
+    }
+
+    return result;
 }

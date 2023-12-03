@@ -12,10 +12,11 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                                     char **client_addr, char **proxy_addr, char **server_port_str,
                                     char **client_port_str, uint8_t *client_delay_rate,
                                     uint8_t *client_drop_rate, uint8_t *server_delay_rate,
-                                    uint8_t *server_drop_rate, struct fsm_error *err)
+                                    uint8_t *server_drop_rate, uint8_t *corruption_rate,
+                                    struct fsm_error *err)
 {
     int opt;
-    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag;
+    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag, E_flag;
 
     opterr = 0;
     C_flag = 0;
@@ -27,8 +28,9 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
     P_flag = 0;
     L_flag = 0;
     l_flag = 0;
+    E_flag = 0;
 
-    while ((opt = getopt(argc, argv, "C:c:S:s:P:D:d:L:l:h")) != -1)
+    while ((opt = getopt(argc, argv, "C:c:S:s:P:D:d:L:l:E:h")) != -1)
     {
         switch (opt)
         {
@@ -214,6 +216,30 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                 }
                 break;
             }
+            case 'E':
+            {
+                if (E_flag)
+                {
+                    char message[40];
+
+                    snprintf(message, sizeof(message), "option '-E' can only be passed in once.");
+                    usage(argv[0]);
+                    SET_ERROR(err, message);
+
+                    return -1;
+                }
+
+                E_flag++;
+
+                char *temp;
+                temp = optarg;
+
+                if (convert_to_int(argv[0], temp, corruption_rate, err) == -1)
+                {
+                    return -1;
+                }
+                break;
+            }
             case 'h':
             {
                 usage(argv[0]);
@@ -244,7 +270,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 void usage(const char *program_name)
 {
     fprintf(stderr, "Usage: %s [-C] <value> [-c] <value> [-S] <value> [-s] <value> [-P] <value>\n", program_name);
-    fprintf(stderr, "[-w] <value> [-D] <value>[-d] <value> [-L] <value> [-l] <value> [-h]\n");
+    fprintf(stderr, "[-w] <value> [-D] <value>[-d] <value> [-L] <value> [-l] <value> [-E] <value> [-h]\n");
     fputs("Options:\n", stderr);
     fputs("  -h                     Display this help message\n", stderr);
     fputs("  -C <value>             Option 'C' (required) with value, Sets the IP client_addr\n", stderr);
@@ -256,6 +282,7 @@ void usage(const char *program_name)
     fputs("  -d <value>             Option 'd' (required) with value, Sets the server drop rate\n", stderr);
     fputs("  -L <value>             Option 'L' (required) with value, Sets the client delay rate\n", stderr);
     fputs("  -l <value>             Option 'l' (required) with value, Sets the server delay rate\n", stderr);
+    fputs("  -E <value>             Option 'E' (required) with value, Sets the corruption rate\n", stderr);
 }
 
 int handle_arguments(const char *binary_name, const char *server_addr,
@@ -264,7 +291,7 @@ int handle_arguments(const char *binary_name, const char *server_addr,
                      in_port_t *server_port, in_port_t *client_port,
                      uint8_t client_delay_rate, uint8_t client_drop_rate,
                      uint8_t server_delay_rate, uint8_t server_drop_rate,
-                     struct fsm_error *err)
+                     uint8_t corruption_rate, struct fsm_error *err)
 {
     if(client_addr == NULL)
     {
@@ -333,6 +360,14 @@ int handle_arguments(const char *binary_name, const char *server_addr,
     if(server_delay_rate > 100)
     {
         SET_ERROR(err, "The server delay rate is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(corruption_rate > 100)
+    {
+        SET_ERROR(err, "The corruption rate is required.");
         usage(binary_name);
 
         return -1;

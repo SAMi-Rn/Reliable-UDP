@@ -236,3 +236,47 @@ int create_flags(uint8_t flags)
 
     return UNKNOWN_FLAG;
 }
+
+int calculate_checksum(uint8_t *checksum, const char *data, size_t length)
+{
+    *checksum = checksum_one(data, length) * checksum_two(data, length);
+
+    return 0;
+}
+
+unsigned char checksum_one(const char *data, size_t length)
+{
+    unsigned char result;
+
+    result = 0;
+    for (size_t i = 0; i < length; i++)
+    {
+        result += data[i] * 34;
+    }
+
+    return result;
+}
+
+unsigned char checksum_two(const char *data, size_t length)
+{
+    unsigned char result;
+
+    result = 0;
+    for (size_t i = 0; i < length; i++)
+    {
+        result ^= data[i];
+    }
+
+    return result;
+}
+
+int compare_checksum(uint8_t checksum, const char *data, size_t length)
+{
+    uint8_t new_checksum;
+
+    calculate_checksum(&new_checksum, data, length);
+
+    printf("new: %u, old: %u", new_checksum, checksum);
+
+    return new_checksum == checksum;
+}

@@ -162,7 +162,16 @@ int main(int argc, char **argv)
             {STATE_CLEANUP,              FSM_EXIT,                   NULL},
     };
 
-    fsm_run(&context, &err, 0, 0 , transitions);
+    fsm_run(&context, &err, transitions);
+
+//    uint8_t checksum;
+//    char msg[20];
+//
+//    strcpy(msg, "hel");
+//
+//    calculate_checksum(&checksum, msg, strlen(msg));
+//
+//    printf(": %u",checksum);
 
     return 0;
 }
@@ -677,7 +686,7 @@ void *init_recv_function(void *ptr)
             {STATE_ERROR,              FSM_EXIT, NULL},
     };
 
-    fsm_run(ctx, &err, 0, 0 , transitions);
+    fsm_run(ctx, &err, transitions);
 
     return NULL;
 }
@@ -727,8 +736,8 @@ void *init_window_checker_function(void *ptr)
             create_data_packet(&pt, ctx -> args -> window, ctx -> args -> head->data);
             send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                         ctx -> args -> window, &pt, err);
+
             create_timer_thread_handler(ctx, err);
-            printf("sent packet with seq number %u\n", pt.hd.seq_number);
             pop(&ctx -> args -> head);
 
             if (ctx -> args -> is_connected_gui)
@@ -748,12 +757,9 @@ void *init_gui_function(void *ptr)
     struct fsm_context *ctx = (struct fsm_context*) ptr;
     struct fsm_error err;
 
-    uint8_t x = SENT_PACKET;
     while(!exit_flag)
     {
         ctx->args->connected_gui_fd = socket_accept_connection(ctx->args->client_gui_fd, &err);
-        printf("%u\n", ctx->args->connected_gui_fd);
-//        write(ctx->args->connected_gui_fd, &x, sizeof(uint8_t));
         ctx->args->is_connected_gui++;
     }
 

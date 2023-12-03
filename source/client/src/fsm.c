@@ -4,7 +4,6 @@ static fsm_state_func fsm_transition(const struct fsm_context *context,
                                      int from_id, int to_id, const struct fsm_transition transitions[]);
 
 int fsm_run(struct fsm_context *context, struct fsm_error *err,
-            int *from_state, int *to_state,
             const struct fsm_transition transitions[])
 {
     int from_id, to_id;
@@ -13,19 +12,19 @@ int fsm_run(struct fsm_context *context, struct fsm_error *err,
     to_id   = FSM_USER_START;
 
     do {
-        fsm_state_func   perform;
-        int                     next_id;
+        fsm_state_func      perform;
+        int                 next_id;
 
-        perform = fsm_transition(context, from_id, to_id, transitions);
+        perform             = fsm_transition(context, from_id, to_id, transitions);
 
         if (perform == NULL)
         {
 
         }
 
-        from_id = to_id;
-        next_id = perform(context, err);
-        to_id = next_id;
+        from_id             = to_id;
+        next_id             = perform(context, err);
+        to_id               = next_id;
 
     } while (to_id != FSM_EXIT);
     return 0;

@@ -18,7 +18,6 @@ uint8_t                     first_empty_packet;
 uint8_t                     first_unacked_packet;
 uint8_t                     is_window_available;
 uint8_t                     window_size;
-struct sockaddr_storage     *list_of_connections;
 
 typedef struct header
 {
@@ -58,8 +57,6 @@ uint32_t            create_sequence_number(uint32_t prev_seq_number, uint32_t da
 uint32_t            previous_seq_number(struct sent_packet *window);
 uint32_t            previous_ack_number(struct sent_packet *window);
 uint32_t            previous_data_size(struct sent_packet *window);
-int                 add_connection(struct sockaddr_storage *addr);
-int                 valid_connection(struct sockaddr_storage *addr);
 int                 check_ack_number(uint32_t expected_ack_number, uint32_t ack_number);
 int                 previous_index(struct sent_packet *window);
 

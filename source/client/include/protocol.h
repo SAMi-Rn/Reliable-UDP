@@ -39,7 +39,6 @@ enum next_state_for_packet
 
 int                 read_flags(uint8_t flags);
 int                 read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
-int                 protocol_connect(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct sent_packet *window, struct fsm_error *err);
 int                 send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err);
 int                 send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
 int                 finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
@@ -52,5 +51,8 @@ int                 initiate_termination(int sockfd, struct sockaddr_storage *ad
 int                 create_flags(uint8_t flags);
 int                 create_data_packet(struct packet *pt, struct sent_packet *window, char *data);
 int                 create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 calculate_checksum(uint8_t *checksum, const char *data, size_t length);
+unsigned char       checksum_one(const char *data, size_t length);
+unsigned char       checksum_two(const char *data, size_t length);
 
 #endif //CLIENT_PROTOCOL_H
