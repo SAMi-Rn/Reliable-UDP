@@ -12,6 +12,8 @@
 #include "protocol.h"
 #include "server_config.h"
 
+#define DATA_SIZE 512
+
 uint8_t                     first_empty_packet;
 uint8_t                     first_unacked_packet;
 uint8_t                     is_window_available;
@@ -24,16 +26,16 @@ typedef struct header
     uint32_t                    ack_number;
     uint8_t                     flags;
     uint8_t                     window_size;
+    uint8_t                     checksum;
     struct timeval              tv;
-    struct sockaddr_storage     src_ip;
-    struct sockaddr_storage     dst_ip;
 } header;
 
 typedef struct packet
 {
     struct header   hd;
-    char            data[512];
+    char            data[DATA_SIZE];
 } packet;
+
 
 typedef struct sent_packet
 {

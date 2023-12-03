@@ -95,7 +95,6 @@ typedef struct arguments
 {
     int                     client_sockfd, server_sockfd, num_of_threads;
     int                     proxy_gui_fd, connected_gui_fd, is_connected_gui;
-    uint8_t                 window_size, client_first_empty_packet, server_first_empty_packet;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str, *proxy_addr;
     in_port_t               server_port, client_port;
     struct sockaddr_storage server_addr_struct, client_addr_struct, proxy_addr_struct, gui_addr_struct;
@@ -159,7 +158,7 @@ int main(int argc, char **argv)
     };
     srand(time(NULL));
 
-    fsm_run(&context, &err, 0, 0 , transitions);
+    fsm_run(&context, &err, transitions);
 
     return 0;
 }
@@ -642,7 +641,7 @@ void *init_server_thread(void *ptr)
             {STATE_ERROR,                       FSM_EXIT,                           NULL},
     };
 
-    fsm_run(ctx, &err, 0, 0 , transitions);
+    fsm_run(ctx, &err, transitions);
 
     return NULL;
 }
@@ -658,7 +657,7 @@ void *init_keyboard_thread(void *ptr)
             {STATE_ERROR,                       FSM_EXIT,                   NULL},
     };
 
-    fsm_run(ctx, &err, 0, 0 , transitions);
+    fsm_run(ctx, &err, transitions);
 
     return NULL;
 }

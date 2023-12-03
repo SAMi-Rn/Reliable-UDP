@@ -15,7 +15,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
                                     uint8_t *server_drop_rate, struct fsm_error *err)
 {
     int opt;
-    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag, w_flag;
+    bool C_flag, S_flag, s_flag, c_flag, D_flag, d_flag, P_flag, L_flag, l_flag;
 
     opterr = 0;
     C_flag = 0;
