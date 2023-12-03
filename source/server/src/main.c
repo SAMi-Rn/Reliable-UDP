@@ -16,11 +16,11 @@ enum application_states
     STATE_LISTEN,
     STATE_CREATE_GUI_THREAD,
     STATE_WAIT,
+    STATE_COMPARE_CHECKSUM,
     STATE_SEND_SYN_ACK,
     STATE_CHECK_SEQ_NUMBER,
     STATE_CREATE_TIMER_THREAD,
     STATE_WAIT_FOR_ACK,
-    STATE_CHECK_FLAGS,
     STATE_SEND_PACKET,
     STATE_UPDATE_SEQ_NUMBER,
     STATE_CLEANUP,
@@ -46,6 +46,7 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
 static int listen_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int wait_handler(struct fsm_context *context, struct fsm_error *err);
+static int compare_checksum_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_timer_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err);
@@ -90,41 +91,44 @@ int main(int argc, char **argv)
     };
 
     static struct client_fsm_transition transitions[] = {
-            {FSM_INIT,                  STATE_PARSE_ARGUMENTS,      parse_arguments_handler},
-            {STATE_PARSE_ARGUMENTS,     STATE_HANDLE_ARGUMENTS,     handle_arguments_handler},
-            {STATE_HANDLE_ARGUMENTS,    STATE_CONVERT_ADDRESS,      convert_address_handler},
-            {STATE_CONVERT_ADDRESS,     STATE_CREATE_SOCKET,        create_socket_handler},
-            {STATE_CREATE_SOCKET,       STATE_BIND_SOCKET,          bind_socket_handler},
-            {STATE_BIND_SOCKET,         STATE_LISTEN,                 listen_handler},
-            {STATE_LISTEN,         STATE_CREATE_GUI_THREAD,                 create_gui_thread_handler},
-            {STATE_CREATE_GUI_THREAD,         STATE_WAIT,                 wait_handler},
-            {STATE_WAIT,                STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
-            {STATE_CHECK_SEQ_NUMBER,    STATE_SEND_PACKET,          send_packet_handler},
-            {STATE_CHECK_SEQ_NUMBER,    STATE_SEND_SYN_ACK,          send_syn_ack_handler},
-            {STATE_SEND_SYN_ACK,    STATE_UPDATE_SEQ_NUMBER,          update_seq_num_handler},
-            {STATE_CHECK_SEQ_NUMBER,    STATE_WAIT,                 wait_handler },
-            {STATE_CHECK_FLAGS,         STATE_SEND_PACKET,          send_packet_handler},
-            {STATE_SEND_PACKET,        STATE_UPDATE_SEQ_NUMBER,     update_seq_num_handler},
-            {STATE_SEND_PACKET,        STATE_WAIT,     wait_handler},
-            {STATE_UPDATE_SEQ_NUMBER,  STATE_WAIT,                  wait_handler},
-            {STATE_UPDATE_SEQ_NUMBER,  STATE_CREATE_TIMER_THREAD,                  create_timer_handler},
-            {STATE_CREATE_TIMER_THREAD,  STATE_WAIT_FOR_ACK,                  wait_for_ack_handler},
-            {STATE_WAIT_FOR_ACK,  STATE_WAIT,                  wait_handler},
-            {STATE_WAIT_FOR_ACK,  STATE_CLEANUP,                  cleanup_handler},
-            {STATE_ERROR,              STATE_CLEANUP,               cleanup_handler},
-            {STATE_PARSE_ARGUMENTS,    STATE_ERROR,                 error_handler},
-            {STATE_HANDLE_ARGUMENTS,   STATE_ERROR,                 error_handler},
-            {STATE_CONVERT_ADDRESS,    STATE_ERROR,                 error_handler},
-            {STATE_CREATE_SOCKET,      STATE_ERROR,                 error_handler},
-            {STATE_BIND_SOCKET,        STATE_ERROR,                 error_handler},
-            {STATE_WAIT,               STATE_ERROR,                 error_handler},
-            {STATE_CHECK_SEQ_NUMBER,   STATE_ERROR,                 error_handler},
-            {STATE_CHECK_FLAGS,        STATE_ERROR,                 error_handler},
-            {STATE_SEND_PACKET,        STATE_ERROR,                 error_handler},
-            {STATE_CLEANUP,            FSM_EXIT,                    NULL},
+            {FSM_INIT,                      STATE_PARSE_ARGUMENTS,      parse_arguments_handler},
+            {STATE_PARSE_ARGUMENTS,         STATE_HANDLE_ARGUMENTS,     handle_arguments_handler},
+            {STATE_HANDLE_ARGUMENTS,        STATE_CONVERT_ADDRESS,      convert_address_handler},
+            {STATE_CONVERT_ADDRESS,         STATE_CREATE_SOCKET,        create_socket_handler},
+            {STATE_CREATE_SOCKET,           STATE_BIND_SOCKET,          bind_socket_handler},
+            {STATE_BIND_SOCKET,             STATE_LISTEN,               listen_handler},
+            {STATE_LISTEN,                  STATE_CREATE_GUI_THREAD,    create_gui_thread_handler},
+            {STATE_CREATE_GUI_THREAD,       STATE_WAIT,                 wait_handler},
+            {STATE_WAIT,                    STATE_COMPARE_CHECKSUM,     compare_checksum_handler},
+            {STATE_COMPARE_CHECKSUM,        STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
+            {STATE_COMPARE_CHECKSUM,        STATE_WAIT,                 wait_handler},
+            {STATE_WAIT,                    STATE_CLEANUP,              cleanup_handler},
+            {STATE_CHECK_SEQ_NUMBER,       STATE_SEND_PACKET,          send_packet_handler},
+            {STATE_CHECK_SEQ_NUMBER,       STATE_SEND_SYN_ACK,         send_syn_ack_handler},
+            {STATE_SEND_SYN_ACK,           STATE_UPDATE_SEQ_NUMBER,    update_seq_num_handler},
+            {STATE_CHECK_SEQ_NUMBER,       STATE_WAIT,                 wait_handler },
+            {STATE_SEND_PACKET,            STATE_UPDATE_SEQ_NUMBER,    update_seq_num_handler},
+            {STATE_SEND_PACKET,            STATE_WAIT,                 wait_handler},
+            {STATE_UPDATE_SEQ_NUMBER,      STATE_WAIT,                 wait_handler},
+            {STATE_UPDATE_SEQ_NUMBER,      STATE_CREATE_TIMER_THREAD,  create_timer_handler},
+            {STATE_CREATE_TIMER_THREAD,    STATE_WAIT_FOR_ACK,         wait_for_ack_handler},
+            {STATE_WAIT_FOR_ACK,           STATE_WAIT,                 wait_handler},
+            {STATE_WAIT_FOR_ACK,           STATE_CLEANUP,              cleanup_handler},
+            {STATE_ERROR,                  STATE_CLEANUP,               cleanup_handler},
+            {STATE_PARSE_ARGUMENTS,        STATE_ERROR,                 error_handler},
+            {STATE_HANDLE_ARGUMENTS,       STATE_ERROR,                 error_handler},
+            {STATE_CONVERT_ADDRESS,        STATE_ERROR,                 error_handler},
+            {STATE_CREATE_SOCKET,          STATE_ERROR,                 error_handler},
+            {STATE_BIND_SOCKET,            STATE_ERROR,                 error_handler},
+            {STATE_LISTEN,                 STATE_ERROR,                 error_handler},
+            {STATE_CREATE_GUI_THREAD,      STATE_ERROR,                 error_handler},
+            {STATE_WAIT,                   STATE_ERROR,                 error_handler},
+            {STATE_CREATE_TIMER_THREAD,    STATE_ERROR,                 error_handler},
+            {STATE_WAIT_FOR_ACK,           STATE_ERROR,                 error_handler},
+            {STATE_CLEANUP,                FSM_EXIT,                    NULL},
     };
 
-    fsm_run(&context, &err, 0, 0 , transitions);
+    fsm_run(&context, &err, transitions);
 
     return 0;
 }
@@ -165,17 +169,20 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in convert server_addr", "STATE_CONVERT_ADDRESS");
-    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, err) != 0)
+    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct,
+                        ctx -> args -> server_port, err) != 0)
     {
         return STATE_ERROR;
     }
 
-    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> gui_addr_struct, 61000, err) != 0)
+    if (convert_address(ctx -> args -> server_addr, &ctx -> args -> gui_addr_struct,
+                        61000, err) != 0)
     {
         return STATE_ERROR;
     }
 
-    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, ctx -> args -> client_port, err) != 0)
+    if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct,
+                        ctx -> args -> client_port, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -188,13 +195,15 @@ static int create_socket_handler(struct fsm_context *context, struct fsm_error *
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in create socket", "STATE_CREATE_SOCKET");
-    ctx -> args -> sockfd = socket_create(ctx -> args -> server_addr_struct.ss_family, SOCK_DGRAM, 0, err);
+    ctx -> args -> sockfd = socket_create(ctx -> args -> server_addr_struct.ss_family,
+                                          SOCK_DGRAM, 0, err);
     if (ctx -> args -> sockfd == -1)
     {
         return STATE_ERROR;
     }
 
-    ctx -> args -> server_gui_fd = socket_create(ctx -> args -> server_addr_struct.ss_family, SOCK_STREAM, 0, err);
+    ctx -> args -> server_gui_fd = socket_create(ctx -> args -> server_addr_struct.ss_family,
+                                                 SOCK_STREAM, 0, err);
     if (ctx -> args -> server_gui_fd == -1)
     {
         return STATE_ERROR;
@@ -271,12 +280,32 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
+        return STATE_COMPARE_CHECKSUM;
+    }
+
+    return STATE_CLEANUP;
+}
+
+static int compare_checksum_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_COMPARE_CHECKSUM");
+
+    if (compare_checksum(ctx -> args -> temp_packet.hd.checksum, ctx -> args -> temp_packet.data,
+                         strlen(ctx -> args -> temp_packet.data)))
+    {
+
         return STATE_CHECK_SEQ_NUMBER;
     }
 
-    return FSM_EXIT;
-}
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DROPPED_CLIENT_PACKET);
+    }
 
+    return STATE_WAIT;
+}
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;
@@ -318,22 +347,16 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
 
 static int create_timer_handler(struct fsm_context *context, struct fsm_error *err)
 {
-    struct fsm_context *ctx;
-    pthread_t *temp_thread_pool;
+    struct fsm_context  *ctx;
+    pthread_t           *temp_thread_pool;
 
-    ctx = context;
-//    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
-//    {
-//        if (ctx -> args -> thread_pool[i] == NULL)
-//        {
-//            free(ctx -> args -> thread_pool[i]);
-//        }
-//
-//    }
-    temp_thread_pool = ctx -> args -> thread_pool;
+    ctx                 = context;
+    temp_thread_pool    = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CREATE_TIMER_THREAD");
+
     ctx -> args -> num_of_threads++;
-    temp_thread_pool = (pthread_t *) realloc(temp_thread_pool,
+
+    temp_thread_pool    = (pthread_t *) realloc(temp_thread_pool,
                                              sizeof(pthread_t) * ctx -> args -> num_of_threads);
     if (temp_thread_pool == NULL)
     {
@@ -429,17 +452,29 @@ static int update_seq_num_handler(struct fsm_context *context, struct fsm_error 
         return STATE_CREATE_TIMER_THREAD;
     }
 
-    ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number, strlen(ctx -> args -> temp_packet.data));
-//    printf("expected: %u\n", ctx -> args -> expected_seq_number );
+    ctx -> args -> expected_seq_number = update_expected_seq_number(ctx -> args -> temp_packet.hd.seq_number,
+                                                                    strlen(ctx -> args -> temp_packet.data));
+
     return STATE_WAIT;
 }
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
 {
-    struct fsm_context *ctx;
-    ctx = context;
+    struct fsm_context  *ctx;
+    ctx                 = context;
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
-//    pthread_join(ctx -> args -> recv_thread, NULL);
+
+    pthread_join(ctx -> args -> accept_gui_thread, NULL);
     if (socket_close(ctx -> args -> sockfd, err))
+    {
+        printf("close socket error");
+    }
+
+    if (socket_close(ctx -> args -> server_gui_fd, err))
+    {
+        printf("close socket error");
+    }
+
+    if (socket_close(ctx -> args -> connected_gui_fd, err))
     {
         printf("close socket error");
     }
@@ -472,10 +507,6 @@ void *init_timer_function(void *ptr)
         sleep(TIMER_TIME);
         if (ctx -> args -> is_handshake_ack)
         {
-//            printf("Sending syn ack again\n");
-//            printf("temp seq: %u\n", packet_to_send.hd.seq_number);
-//            printf("temp ack: %u\n", packet_to_send.hd.ack_number);
-//            printf("temp flags: %u\n", packet_to_send.hd.flags);
             send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
                         &packet_to_send, &err);
 

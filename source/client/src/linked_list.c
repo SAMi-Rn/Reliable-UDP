@@ -14,6 +14,7 @@ void init_list(struct node **head, char *data)
 void push(struct node *head, char *data)
 {
     struct node* current = head;
+
     while (current -> next != NULL)
     {
         current = current -> next;

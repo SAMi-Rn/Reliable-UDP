@@ -19,6 +19,5 @@ int                 handle_arguments(const char *binary_name, const char *server
                                      const char *client_port_str, in_port_t *server_port,
                                      in_port_t *client_port, struct fsm_error *err);
 int                 parse_in_port_t(const char *binary_name, const char *str, in_port_t *port, struct fsm_error *err);
-int                 convert_to_int(const char *binary_name, char *string, uint8_t *value, struct fsm_error *err);
 
 #endif //CLIENT_COMMAND_LINE_H

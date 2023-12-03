@@ -50,5 +50,9 @@ int                 recv_ack_packet(int sockfd, struct sockaddr_storage *addr, s
 int                 recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
 int                 initiate_termination(int sockfd, struct sockaddr_storage *addr, struct fsm_error *err);
 int                 create_flags(uint8_t flags);
+int                 calculate_checksum(uint8_t *checksum, const char *data, size_t length);
+unsigned char       checksum_one(const char *data, size_t length);
+unsigned char       checksum_two(const char *data, size_t length);
+int                 compare_checksum(uint8_t checksum, const char *data, size_t length);
 
 #endif //CLIENT_PROTOCOL_H

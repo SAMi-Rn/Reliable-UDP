@@ -14,7 +14,6 @@ int create_window(struct sent_packet **window, uint8_t cmd_line_window_size, str
 
     for (int i = 0; i < window_size; i++)
     {
-//        window[i] = malloc(sizeof(*window[i]));
         (*window)[i].is_packet_full = 0;
     }
 
@@ -108,10 +107,10 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
-//    printf("first empty: %d\nfirst unacked: %d\n", first_empty_packet, first_unacked_packet);
     printf("\n\nSENDING:\n");
     printf("seq number: %u\n", pt->hd.seq_number);
     printf("flags: %u\n", pt->hd.flags);
+    printf("checksum: %u\n", pt->hd.checksum);
     printf("data: %s\n\n\n\n", pt->data);
 
     if (result < 0)
@@ -127,6 +126,7 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
 {
     gettimeofday(&pt->hd.tv, NULL);
     window[first_empty_packet].pt                           = *pt;
+
     if (pt->hd.flags == ACK)
     {
         window[first_empty_packet].is_packet_full           = FALSE;
@@ -204,7 +204,6 @@ uint32_t create_second_handshake_seq_number(void)
      return 100;
 }
 
-
 uint32_t create_sequence_number(uint32_t prev_seq_number, uint32_t data_size)
 {
     return prev_seq_number + data_size;
@@ -243,37 +242,6 @@ uint32_t previous_ack_number(struct sent_packet *window)
     }
 
     return window[first_empty_packet - 1].pt.hd.ack_number;
-}
-
-int add_connection(struct sockaddr_storage *addr)
-{
-    struct sockaddr_storage *temp;
-    temp = (struct sockaddr_storage *) realloc(list_of_connections,
-                                                              (sizeof(list_of_connections)/ sizeof(struct sockaddr_storage) + 1) *
-                                                                      sizeof(struct sockaddr_storage));
-
-    if (temp == NULL)
-    {
-        return -1;
-    }
-
-    temp[(sizeof(temp)/ sizeof(struct sockaddr_storage))] = *addr;
-    list_of_connections = temp;
-
-    return 0;
-}
-
-int valid_connection(struct sockaddr_storage *addr)
-{
-    for (int i = 0; i < sizeof(list_of_connections)/ sizeof(struct sockaddr_storage); i++)
-    {
-//        if (list_of_connections[i] == server_addr_struct)
-//        {
-//           return 1;
-//        }
-    }
-
-    return 0;
 }
 
 int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)

@@ -33,11 +33,10 @@ typedef int (*fsm_state_func)(struct fsm_context *context,
 struct client_fsm_transition {
     int                     from_id;
     int                     to_id;
-    fsm_state_func   perform;
+    fsm_state_func          perform;
 };
 
 int fsm_run(struct fsm_context *context, struct fsm_error *err,
-            int *from_state, int *to_state,
             const struct client_fsm_transition transitions[]);
 
 #define SET_ERROR(err, msg) \
