@@ -46,12 +46,15 @@ enum gui_stats
 {
     SENT_PACKET,
     RECEIVED_PACKET,
+    RECEIVED_ACK,
     RESENT_PACKET,
     DROPPED_CLIENT_PACKET,
     DELAYED_CLIENT_PACKET,
     DROPPED_SERVER_PACKET,
-    DELAYED_SERVER_PACKET
+    DELAYED_SERVER_PACKET,
+    CORRUPTED_DATA
 };
+
 
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
@@ -200,7 +203,7 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
     if (handle_arguments(ctx -> argv[0], ctx -> args -> server_addr,
                          ctx -> args -> client_addr, ctx -> args -> server_port_str,
                          ctx -> args -> client_port_str, &ctx -> args -> server_port,
-                         &ctx -> args -> client_port, err) != 0)
+                         &ctx -> args -> client_port, ctx -> args -> window_size, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -645,6 +648,11 @@ static int remove_packet_from_window_handler(struct fsm_context *context, struct
     SET_TRACE(context, "", "STATE_CHECK_ACK_NUMBER");
 
     remove_packet_from_window(ctx -> args -> window, &ctx -> args -> temp_packet);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_ACK);
+    }
 
     return STATE_WAIT;
 }

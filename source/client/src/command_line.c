@@ -152,7 +152,8 @@ void usage(const char *program_name)
 int handle_arguments(const char *binary_name, const char *server_addr,
                                      const char *client_addr, const char *server_port_str,
                                      const char *client_port_str, in_port_t *server_port,
-                                     in_port_t *client_port, struct fsm_error *err)
+                                     in_port_t *client_port, uint8_t window_size,
+                                     struct fsm_error *err)
 {
     if(server_addr == NULL)
     {
@@ -181,6 +182,14 @@ int handle_arguments(const char *binary_name, const char *server_addr,
     if(client_port_str == NULL)
     {
         SET_ERROR(err, "The client_port_str is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(window_size < 3)
+    {
+        SET_ERROR(err, "window size has to be greater than 2");
         usage(binary_name);
 
         return -1;
