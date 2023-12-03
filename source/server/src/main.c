@@ -16,6 +16,7 @@ enum application_states
     STATE_LISTEN,
     STATE_CREATE_GUI_THREAD,
     STATE_WAIT,
+    STATE_COMPARE_CHECKSUM,
     STATE_SEND_SYN_ACK,
     STATE_CHECK_SEQ_NUMBER,
     STATE_CREATE_TIMER_THREAD,
@@ -45,6 +46,7 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
 static int listen_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int wait_handler(struct fsm_context *context, struct fsm_error *err);
+static int compare_checksum_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_timer_handler(struct fsm_context *context, struct fsm_error *err);
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err);
@@ -97,7 +99,9 @@ int main(int argc, char **argv)
             {STATE_BIND_SOCKET,             STATE_LISTEN,               listen_handler},
             {STATE_LISTEN,                  STATE_CREATE_GUI_THREAD,    create_gui_thread_handler},
             {STATE_CREATE_GUI_THREAD,       STATE_WAIT,                 wait_handler},
-            {STATE_WAIT,                    STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
+            {STATE_WAIT,                    STATE_COMPARE_CHECKSUM,     compare_checksum_handler},
+            {STATE_COMPARE_CHECKSUM,        STATE_CHECK_SEQ_NUMBER,     check_seq_number_handler},
+            {STATE_COMPARE_CHECKSUM,        STATE_WAIT,                 wait_handler},
             {STATE_WAIT,                    STATE_CLEANUP,              cleanup_handler},
             {STATE_CHECK_SEQ_NUMBER,       STATE_SEND_PACKET,          send_packet_handler},
             {STATE_CHECK_SEQ_NUMBER,       STATE_SEND_SYN_ACK,         send_syn_ack_handler},
@@ -276,12 +280,32 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
-        return STATE_CHECK_SEQ_NUMBER;
+        return STATE_COMPARE_CHECKSUM;
     }
 
     return STATE_CLEANUP;
 }
 
+static int compare_checksum_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_COMPARE_CHECKSUM");
+
+    if (compare_checksum(ctx -> args -> temp_packet.hd.checksum, ctx -> args -> temp_packet.data,
+                         strlen(ctx -> args -> temp_packet.data)))
+    {
+
+        return STATE_CHECK_SEQ_NUMBER;
+    }
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DROPPED_CLIENT_PACKET);
+    }
+
+    return STATE_WAIT;
+}
 static int check_seq_number_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context *ctx;

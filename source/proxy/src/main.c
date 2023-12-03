@@ -25,6 +25,7 @@ enum main_application_states
     STATE_CLIENT_CALCULATE_LOSSINESS,
     STATE_CLIENT_DROP,
     STATE_CLIENT_DELAY_PACKET,
+    STATE_CLIENT_CORRUPT,
     STATE_SEND_CLIENT_PACKET,
     STATE_CLEANUP,
     STATE_ERROR
@@ -36,6 +37,7 @@ enum server_thread_states
     STATE_SERVER_CALCULATE_LOSSINESS,
     STATE_SERVER_DELAY_PACKET,
     STATE_SERVER_DROP,
+    STATE_SERVER_CORRUPT,
     STATE_SEND_SERVER_PACKET
 };
 
@@ -53,6 +55,7 @@ enum gui_stats
     DELAYED_CLIENT_PACKET,
     DROPPED_SERVER_PACKET,
     DELAYED_SERVER_PACKET,
+    CORRUPTED_DATA
 };
 
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
@@ -68,6 +71,7 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
 static int calculate_client_lossiness_handler(struct fsm_context *context, struct fsm_error *err);
 static int client_drop_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int client_delay_packet_handler(struct fsm_context *context, struct fsm_error *err);
+static int client_corrupt_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_client_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int cleanup_handler(struct fsm_context *context, struct fsm_error *err);
 static int error_handler(struct fsm_context *context, struct fsm_error *err);
@@ -76,6 +80,7 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
 static int calculate_server_lossiness_handler(struct fsm_context *context, struct fsm_error *err);
 static int server_drop_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int server_delay_packet_handler(struct fsm_context *context, struct fsm_error *err);
+static int server_corrupt_packet_handler(struct fsm_context *context, struct fsm_error *err);
 static int send_server_packet_handler(struct fsm_context *context, struct fsm_error *err);
 
 static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_error *err);
@@ -101,7 +106,7 @@ typedef struct arguments
     pthread_t               server_thread, keyboard_thread, accept_gui_thread;
     pthread_t               *thread_pool;
     struct packet           server_packet, client_packet;
-    uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate;
+    uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate, corruption_rate;
 } arguments;
 
 int main(int argc, char **argv)
@@ -113,6 +118,7 @@ int main(int argc, char **argv)
             .client_drop_rate   = 101,
             .server_delay_rate  = 101,
             .server_drop_rate   = 101,
+            .corruption_rate    = 101,
             .num_of_threads     = 0,
             .is_connected_gui   = 0
     };
@@ -138,9 +144,11 @@ int main(int argc, char **argv)
             {STATE_LISTEN_CLIENT,               STATE_CLEANUP,                  cleanup_handler},
             {STATE_CLIENT_CALCULATE_LOSSINESS,  STATE_CLIENT_DROP,               client_drop_packet_handler},
             {STATE_CLIENT_CALCULATE_LOSSINESS,  STATE_CLIENT_DELAY_PACKET,       client_delay_packet_handler},
+            {STATE_CLIENT_CALCULATE_LOSSINESS,  STATE_CLIENT_CORRUPT,           client_corrupt_packet_handler},
             {STATE_CLIENT_CALCULATE_LOSSINESS,  STATE_SEND_CLIENT_PACKET,        send_client_packet_handler},
             {STATE_CLIENT_DROP,                 STATE_LISTEN_CLIENT,             listen_client_handler},
             {STATE_CLIENT_DELAY_PACKET,         STATE_LISTEN_CLIENT,             listen_client_handler},
+            {STATE_CLIENT_CORRUPT,              STATE_SEND_CLIENT_PACKET,        send_client_packet_handler},
             {STATE_SEND_CLIENT_PACKET,          STATE_LISTEN_CLIENT,             listen_client_handler},
             {STATE_ERROR,                       STATE_CLEANUP,                   cleanup_handler},
             {STATE_PARSE_ARGUMENTS,             STATE_ERROR,                     error_handler},
@@ -159,7 +167,16 @@ int main(int argc, char **argv)
     srand(time(NULL));
 
     fsm_run(&context, &err, transitions);
-
+//
+//    char *msg;
+//
+//    msg = (char *) malloc(100);
+//
+//    strcpy(msg, "hello world this is message one");
+//
+//    corrupt_data(&msg, strlen(msg));
+//
+//    printf("corrupt: %s\n", msg);
     return 0;
 }
 
@@ -173,7 +190,7 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
                         &ctx -> args -> server_port_str, &ctx -> args -> client_port_str,
                         &ctx -> args -> client_delay_rate, &ctx -> args -> client_drop_rate,
                         &ctx -> args -> server_delay_rate, &ctx -> args -> server_drop_rate,
-                        err) == -1)
+                        &ctx -> args -> corruption_rate, err) == -1)
     {
         return STATE_ERROR;
     }
@@ -190,7 +207,8 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
                          ctx -> args -> proxy_addr, ctx -> args -> client_port_str,
                          &ctx -> args -> server_port, &ctx -> args -> client_port,
                          ctx -> args -> client_delay_rate, ctx -> args -> client_drop_rate,
-                         ctx -> args -> server_delay_rate, ctx -> args -> server_drop_rate, err) != 0)
+                         ctx -> args -> server_delay_rate, ctx -> args -> server_drop_rate,
+                         ctx -> args -> corruption_rate, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -371,7 +389,7 @@ static int calculate_client_lossiness_handler(struct fsm_context *context, struc
     int                     result;
     ctx = context;
     SET_TRACE(context, "", "STATE_CLIENT_CALCULATE_LOSSINESS");
-    result = calculate_lossiness(ctx -> args -> client_drop_rate, ctx -> args -> client_delay_rate);
+    result = calculate_lossiness(ctx -> args -> client_drop_rate, ctx -> args -> client_delay_rate, ctx -> args -> corruption_rate);
     if (result == DROP)
     {
         return STATE_CLIENT_DROP;
@@ -379,6 +397,10 @@ static int calculate_client_lossiness_handler(struct fsm_context *context, struc
     else if (result == DELAY)
     {
         return STATE_CLIENT_DELAY_PACKET;
+    }
+    else if (result == CORRUPT)
+    {
+        return STATE_CLIENT_CORRUPT;
     }
 
     return STATE_SEND_CLIENT_PACKET;
@@ -429,6 +451,33 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
     }
 
     return STATE_LISTEN_CLIENT;
+}
+
+static int client_corrupt_packet_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+
+    ctx = context;
+    SET_TRACE(context, "", "STATE_CLIENT_CORRUPT");
+
+    if (strlen(ctx -> args -> client_packet.data) == 0)
+    {
+        return STATE_SEND_CLIENT_PACKET;
+    }
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, CORRUPTED_DATA);
+    }
+
+    char *temp;
+    temp = strdup(ctx -> args -> client_packet.data);
+
+    corrupt_data(&temp, strlen(ctx -> args -> client_packet.data));
+
+    strcpy(ctx -> args -> client_packet.data, temp);
+
+    return STATE_SEND_CLIENT_PACKET;
 }
 
 static int send_client_packet_handler(struct fsm_context *context, struct fsm_error *err)
@@ -514,7 +563,7 @@ static int calculate_server_lossiness_handler(struct fsm_context *context, struc
     int                     result;
     ctx = context;
     SET_TRACE(context, "", "STATE_SERVER_CALCULATE_LOSSINESS");
-    result = calculate_lossiness(ctx -> args -> server_drop_rate, ctx -> args -> server_delay_rate);
+    result = calculate_lossiness(ctx -> args -> server_drop_rate, ctx -> args -> server_delay_rate, ctx -> args -> corruption_rate);
     if (result == DROP)
     {
         return STATE_SERVER_DROP;
@@ -522,6 +571,10 @@ static int calculate_server_lossiness_handler(struct fsm_context *context, struc
     else if (result == DELAY)
     {
         return STATE_SERVER_DELAY_PACKET;
+    }
+    else if (result == CORRUPT)
+    {
+        return STATE_SERVER_CORRUPT;
     }
 
     return STATE_SEND_SERVER_PACKET;
@@ -571,6 +624,33 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
     }
 
     return STATE_LISTEN_SERVER;
+}
+
+static int server_corrupt_packet_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+
+    ctx = context;
+    SET_TRACE(context, "", "");
+
+    if (strlen(ctx -> args -> server_packet.data) == 0)
+    {
+        return STATE_SEND_SERVER_PACKET;
+    }
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, CORRUPTED_DATA);
+    }
+
+    char *temp;
+    temp = strdup(ctx -> args -> client_packet.data);
+
+    corrupt_data(&temp, strlen(ctx -> args -> server_packet.data));
+
+    strcpy(ctx -> args -> server_packet.data, temp);
+
+    return STATE_SEND_SERVER_PACKET;
 }
 
 static int send_server_packet_handler(struct fsm_context *context, struct fsm_error *err)
@@ -633,9 +713,11 @@ void *init_server_thread(void *ptr)
             {STATE_LISTEN_SERVER,               STATE_SERVER_CALCULATE_LOSSINESS,   calculate_server_lossiness_handler},
             {STATE_SERVER_CALCULATE_LOSSINESS,  STATE_SERVER_DROP,                  server_drop_packet_handler},
             {STATE_SERVER_CALCULATE_LOSSINESS,  STATE_SERVER_DELAY_PACKET,          server_delay_packet_handler},
+            {STATE_SERVER_CALCULATE_LOSSINESS,  STATE_SERVER_CORRUPT,               server_corrupt_packet_handler},
             {STATE_SERVER_CALCULATE_LOSSINESS,  STATE_SEND_SERVER_PACKET,           send_server_packet_handler},
             {STATE_SERVER_DROP,                 STATE_LISTEN_SERVER,                listen_server_handler},
             {STATE_SERVER_DELAY_PACKET,         STATE_LISTEN_SERVER,                listen_server_handler},
+            {STATE_SERVER_CORRUPT,              STATE_SEND_SERVER_PACKET,           send_server_packet_handler},
             {STATE_SEND_SERVER_PACKET,          STATE_LISTEN_SERVER,                listen_server_handler},
             {STATE_LISTEN_SERVER,               FSM_EXIT,                           NULL},
             {STATE_ERROR,                       FSM_EXIT,                           NULL},

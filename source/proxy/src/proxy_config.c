@@ -1,11 +1,11 @@
 #include "proxy_config.h"
 
-int random_number(void)
+int random_number(size_t upperbound)
 {
-    return rand() % 101;
+    return upperbound == 0 ? 0 : rand() % upperbound;
 }
 
-int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
+int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate, uint8_t corruption_rate)
 {
     printf("delay: %u drop %u\n", delay_rate, drop_rate);
     if (drop_rate > 0)
@@ -24,13 +24,21 @@ int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate)
         }
     }
 
+    if (corruption_rate > 0)
+    {
+        if (calculate_corruption(corruption_rate))
+        {
+            return CORRUPT;
+        }
+    }
+
     return SEND;
 }
 
 int calculate_drop(uint8_t percentage)
 {
     int rand;
-    rand = random_number();
+    rand = random_number(101);
 
     return rand > percentage ? FALSE : TRUE;
 }
@@ -38,7 +46,15 @@ int calculate_drop(uint8_t percentage)
 int calculate_delay(uint8_t percentage)
 {
     int rand;
-    rand = random_number();
+    rand = random_number(101);
+
+    return rand > percentage ? FALSE : TRUE;
+}
+
+int calculate_corruption(uint8_t percentage)
+{
+    int rand;
+    rand = random_number(101);
 
     return rand > percentage ? FALSE : TRUE;
 }
@@ -233,3 +249,24 @@ int read_menu(int upperbound)
     return (int) temp ;
 }
 
+int corrupt_data(char **data, size_t length)
+{
+    char *temp;
+
+    temp = strdup(*data);
+
+    for (size_t i = 0; i < length; i++)
+    {
+        int rbyte;
+        int rbit;
+
+        rbyte   = random_number(length);
+        rbit    = random_number(8);
+
+        temp[rbyte] ^= 1 << rbit;
+    }
+
+    *data = temp;
+
+    return 0;
+}
