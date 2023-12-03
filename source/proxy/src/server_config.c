@@ -14,6 +14,43 @@ int socket_create(int domain, int type, int protocol, struct fsm_error *err)
     return sockfd;
 }
 
+int start_listening(int sockfd, int backlog, struct fsm_error *err)
+{
+    if(listen(sockfd, backlog) == -1)
+    {
+        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    return 0;
+}
+
+int socket_accept_connection(int sockfd, struct fsm_error *err)
+{
+    struct sockaddr             client_addr;
+    socklen_t                   client_addr_len;
+
+    client_addr_len             = sizeof(client_addr);
+    int client_fd;
+
+    errno = 0;
+    client_fd = accept(sockfd, &client_addr, &client_addr_len);
+
+    if(client_fd == -1)
+    {
+        if(errno != EINTR)
+        {
+            perror("Error in connecting to client.");
+        }
+        SET_ERROR(err, strerror(errno));
+
+        return -1;
+    }
+
+    return client_fd;
+}
+
 int socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err)
 {
     char      addr_str[INET6_ADDRSTRLEN];
@@ -108,5 +145,21 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
     }
 
     return 0;
+}
 
+int send_stats_gui(int sockfd, uint8_t stat)
+{
+    uint8_t converted_size;
+    ssize_t result;
+
+    converted_size  = htonl(stat);
+    result          = write(sockfd, &converted_size, sizeof(converted_size));
+
+    if (result <= 0)
+    {
+        return -1;
+    }
+
+
+    return 0;
 }

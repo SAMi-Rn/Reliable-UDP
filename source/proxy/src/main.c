@@ -6,6 +6,7 @@
 
 #define PROXY_CLIENT_PORT 8000
 #define PROXY_SERVER_PORT 8050
+#define GUI_PORT 61060
 #define DELAY_TIME 5
 
 enum main_application_states
@@ -15,6 +16,8 @@ enum main_application_states
     STATE_CONVERT_ADDRESS,
     STATE_CREATE_SOCKET,
     STATE_BIND_SOCKET,
+    STATE_LISTEN,
+    STATE_CREATE_GUI_THREAD,
     STATE_CREATE_WINDOW,
     STATE_CREATE_SERVER_THREAD,
     STATE_CREATE_KEYBOARD_THREAD,
@@ -39,7 +42,17 @@ enum server_thread_states
 enum keyboard_thread_states
 {
     STATE_READ_FROM_KEYBOARD = FSM_USER_START,
-    STATE_UPDATE_LOSSINESS,
+};
+
+enum gui_stats
+{
+    SENT_PACKET,
+    RECEIVED_PACKET,
+    RESENT_PACKET,
+    DROPPED_CLIENT_PACKET,
+    DELAYED_CLIENT_PACKET,
+    DROPPED_SERVER_PACKET,
+    DELAYED_SERVER_PACKET,
 };
 
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
@@ -47,7 +60,8 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_socket_handler(struct fsm_context *context, struct fsm_error *err);
 static int bind_socket_handler(struct fsm_context *context, struct fsm_error *err);
-static int create_window_handler(struct fsm_context *context, struct fsm_error *err);
+static int listen_handler(struct fsm_context *context, struct fsm_error *err);
+static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_server_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int create_keyboard_thread_handler(struct fsm_context *context, struct fsm_error *err);
 static int listen_client_handler(struct fsm_context *context, struct fsm_error *err);
@@ -65,7 +79,6 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
 static int send_server_packet_handler(struct fsm_context *context, struct fsm_error *err);
 
 static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_error *err);
-static int update_lossiness_handler(struct fsm_context *context, struct fsm_error *err);
 
 static void                     sigint_handler(int signum);
 static int                      setup_signal_handler(struct fsm_error *err);
@@ -76,18 +89,18 @@ void *init_server_thread(void *ptr);
 void *init_keyboard_thread(void *ptr);
 void *init_client_delay_thread(void *ptr);
 void *init_server_delay_thread(void *ptr);
+void *init_gui_function(void *ptr);
 
 typedef struct arguments
 {
     int                     client_sockfd, server_sockfd, num_of_threads;
+    int                     proxy_gui_fd, connected_gui_fd, is_connected_gui;
     uint8_t                 window_size, client_first_empty_packet, server_first_empty_packet;
     char                    *server_addr, *client_addr, *server_port_str, *client_port_str, *proxy_addr;
     in_port_t               server_port, client_port;
-    struct sockaddr_storage server_addr_struct, client_addr_struct, proxy_addr_struct;
-    pthread_t               server_thread, keyboard_thread;
+    struct sockaddr_storage server_addr_struct, client_addr_struct, proxy_addr_struct, gui_addr_struct;
+    pthread_t               server_thread, keyboard_thread, accept_gui_thread;
     pthread_t               *thread_pool;
-    struct sent_packet      *server_window;
-    struct sent_packet      *client_window;
     struct packet           server_packet, client_packet;
     uint8_t                 client_delay_rate, server_delay_rate, client_drop_rate, server_drop_rate;
 } arguments;
@@ -101,7 +114,8 @@ int main(int argc, char **argv)
             .client_drop_rate   = 101,
             .server_delay_rate  = 101,
             .server_drop_rate   = 101,
-            .num_of_threads     = 0
+            .num_of_threads     = 0,
+            .is_connected_gui   = 0
     };
 
     struct fsm_context context = {
@@ -116,8 +130,9 @@ int main(int argc, char **argv)
             {STATE_HANDLE_ARGUMENTS,            STATE_CONVERT_ADDRESS,          convert_address_handler},
             {STATE_CONVERT_ADDRESS,             STATE_CREATE_SOCKET,            create_socket_handler},
             {STATE_CREATE_SOCKET,               STATE_BIND_SOCKET,              bind_socket_handler},
-            {STATE_BIND_SOCKET,                 STATE_CREATE_WINDOW,            create_window_handler},
-            {STATE_CREATE_WINDOW,               STATE_CREATE_SERVER_THREAD,     create_server_thread_handler},
+            {STATE_BIND_SOCKET,                 STATE_LISTEN,                   listen_handler},
+            {STATE_LISTEN,                      STATE_CREATE_GUI_THREAD,        create_gui_thread_handler},
+            {STATE_CREATE_GUI_THREAD,           STATE_CREATE_SERVER_THREAD,     create_server_thread_handler},
             {STATE_CREATE_SERVER_THREAD,        STATE_CREATE_KEYBOARD_THREAD,   create_keyboard_thread_handler},
             {STATE_CREATE_KEYBOARD_THREAD,      STATE_LISTEN_CLIENT,            listen_client_handler},
             {STATE_LISTEN_CLIENT,               STATE_CLIENT_CALCULATE_LOSSINESS,calculate_client_lossiness_handler},
@@ -138,7 +153,6 @@ int main(int argc, char **argv)
             {STATE_CREATE_SERVER_THREAD,        STATE_ERROR,                     error_handler},
             {STATE_CREATE_KEYBOARD_THREAD,      STATE_ERROR,                     error_handler},
             {STATE_LISTEN_CLIENT,               STATE_ERROR,                     error_handler},
-//            {STATE_CLIENT_CALCULATE_LOSSINESS,  STATE_ERROR,                     error_handler},
             {STATE_CLIENT_DROP,                 STATE_ERROR,                     error_handler},
             {STATE_SEND_CLIENT_PACKET,          STATE_ERROR,                     error_handler},
             {STATE_CLEANUP,                     FSM_EXIT,                        NULL},
@@ -160,7 +174,7 @@ static int parse_arguments_handler(struct fsm_context *context, struct fsm_error
                         &ctx -> args -> server_port_str, &ctx -> args -> client_port_str,
                         &ctx -> args -> client_delay_rate, &ctx -> args -> client_drop_rate,
                         &ctx -> args -> server_delay_rate, &ctx -> args -> server_drop_rate,
-                        &ctx -> args -> window_size, err) == -1)
+                        err) == -1)
     {
         return STATE_ERROR;
     }
@@ -194,11 +208,18 @@ static int convert_address_handler(struct fsm_context *context, struct fsm_error
     {
         return STATE_ERROR;
     }
+
     if (convert_address(ctx -> args -> server_addr, &ctx -> args -> server_addr_struct, ctx -> args -> server_port, err) != 0)
     {
         return STATE_ERROR;
     }
+
     if (convert_address(ctx -> args -> client_addr, &ctx -> args -> client_addr_struct, ctx -> args -> client_port, err) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    if (convert_address(ctx -> args -> proxy_addr, &ctx -> args -> gui_addr_struct, GUI_PORT, err) != 0)
     {
         return STATE_ERROR;
     }
@@ -223,6 +244,12 @@ static int create_socket_handler(struct fsm_context *context, struct fsm_error *
         return STATE_ERROR;
     }
 
+    ctx -> args -> proxy_gui_fd = socket_create(ctx -> args -> proxy_addr_struct.ss_family, SOCK_STREAM, 0, err);
+    if (ctx -> args -> proxy_gui_fd == -1)
+    {
+        return STATE_ERROR;
+    }
+
     return STATE_BIND_SOCKET;
 }
 
@@ -241,26 +268,43 @@ static int bind_socket_handler(struct fsm_context *context, struct fsm_error *er
         return STATE_ERROR;
     }
 
-    return STATE_CREATE_WINDOW;
-}
-
-static int create_window_handler(struct fsm_context *context, struct fsm_error *err)
-{
-    struct fsm_context *ctx;
-    ctx = context;
-    SET_TRACE(context, "in create window", "STATE_CREATE_WINDOW");
-    if (create_window(&ctx -> args -> server_window, ctx -> args -> window_size, &ctx -> args -> server_first_empty_packet) != 0)
+    if (socket_bind(ctx -> args -> proxy_gui_fd, &ctx -> args -> gui_addr_struct, GUI_PORT, err))
     {
         return STATE_ERROR;
     }
 
-    if (create_window(&ctx -> args -> client_window, ctx -> args -> window_size, &ctx -> args -> client_first_empty_packet) != 0)
+    return STATE_LISTEN;
+}
+
+static int listen_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context *ctx;
+    ctx = context;
+    SET_TRACE(context, "in start listening", "STATE_START_LISTENING");
+    if (start_listening(ctx -> args -> proxy_gui_fd, SOMAXCONN, err))
+    {
+        return STATE_ERROR;
+    }
+
+    return STATE_CREATE_GUI_THREAD;
+}
+
+static int create_gui_thread_handler(struct fsm_context *context, struct fsm_error *err)
+{
+    struct fsm_context      *ctx;
+    int                     result;
+    ctx = context;
+    SET_TRACE(context, "", "STATE_CREATE_GUI_THREAD");
+    result = pthread_create(&ctx -> args -> accept_gui_thread, NULL, init_gui_function,
+                            (void *) ctx);
+    if (result < 0)
     {
         return STATE_ERROR;
     }
 
     return STATE_CREATE_SERVER_THREAD;
 }
+
 static int create_server_thread_handler(struct fsm_context *context, struct fsm_error *err)
 {
     struct fsm_context      *ctx;
@@ -307,7 +351,14 @@ static int listen_client_handler(struct fsm_context *context, struct fsm_error *
         {
             return STATE_ERROR;
         }
-        printf("Client packet with seq number: %u ack number: %u flags: %u received\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+        printf("Client packet with seq number: %u ack number: %u flags: %u received\n",
+               ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number,
+               ctx -> args -> client_packet.hd.flags);
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
+        }
 
         return STATE_CLIENT_CALCULATE_LOSSINESS;
     }
@@ -328,7 +379,6 @@ static int calculate_client_lossiness_handler(struct fsm_context *context, struc
     }
     else if (result == DELAY)
     {
-//        ctx -> args -> client_delay_index = calculate_lossiness(ctx -> args -> client_drop_rate, ctx -> args -> client_delay_rate);
         return STATE_CLIENT_DELAY_PACKET;
     }
 
@@ -341,7 +391,14 @@ static int client_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_CLIENT_DROP");
 
-    printf("Client packet with seq number: %u ack number: %u flags: %u dropped\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+    printf("Client packet with seq number: %u ack number: %u flags: %u dropped\n",
+           ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number,
+           ctx -> args -> client_packet.hd.flags);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DROPPED_CLIENT_PACKET);
+    }
 
     return STATE_LISTEN_CLIENT;
 }
@@ -367,6 +424,11 @@ static int client_delay_packet_handler(struct fsm_context *context, struct fsm_e
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_client_delay_thread, (void *) ctx);
 
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DELAYED_CLIENT_PACKET);
+    }
+
     return STATE_LISTEN_CLIENT;
 }
 
@@ -385,7 +447,14 @@ static int send_client_packet_handler(struct fsm_context *context, struct fsm_er
         return STATE_ERROR;
     }
 
-    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n", ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number, ctx -> args -> client_packet.hd.flags);
+    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n",
+           ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number,
+           ctx -> args -> client_packet.hd.flags);
+
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
 
     return STATE_LISTEN_CLIENT;
 }
@@ -424,7 +493,15 @@ static int listen_server_handler(struct fsm_context *context, struct fsm_error *
         {
             return STATE_ERROR;
         }
-        printf("Server packet with seq number: %u ack number: %u flags: %u received\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
+
+        printf("Server packet with seq number: %u ack number: %u flags: %u received\n",
+               ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number,
+               ctx -> args -> server_packet.hd.flags);
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
+        }
 
         return STATE_SERVER_CALCULATE_LOSSINESS;
     }
@@ -458,7 +535,14 @@ static int server_drop_packet_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "", "STATE_SERVER_DROP");
 
-    printf("Server packet with seq number: %u ack number: %u flags: %u dropped\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DROPPED_SERVER_PACKET);
+    }
+
+    printf("Server packet with seq number: %u ack number: %u flags: %u dropped\n",
+           ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number,
+           ctx -> args -> server_packet.hd.flags);
 
     return STATE_LISTEN_SERVER;
 }
@@ -482,6 +566,11 @@ static int server_delay_packet_handler(struct fsm_context *context, struct fsm_e
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_server_delay_thread, (void *) ctx);
 
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DELAYED_SERVER_PACKET);
+    }
+
     return STATE_LISTEN_SERVER;
 }
 
@@ -500,7 +589,14 @@ static int send_server_packet_handler(struct fsm_context *context, struct fsm_er
         return STATE_ERROR;
     }
 
-    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n", ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number, ctx -> args -> server_packet.hd.flags);
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
+
+    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n",
+           ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number,
+           ctx -> args -> server_packet.hd.flags);
 
     return STATE_LISTEN_SERVER;
 }
@@ -527,15 +623,6 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
 
     return FSM_EXIT;
 }
-
-//static int update_lossiness_handler(struct fsm_context *context, struct fsm_error *err)
-//{
-//    struct fsm_context *ctx;
-//    ctx = context;
-//    SET_TRACE(context, "", "STATE_UPDATE_LOSSINESS");
-//
-//    return STATE_READ_FROM_KEYBOARD;
-//}
 
 void *init_server_thread(void *ptr)
 {
@@ -580,17 +667,24 @@ void *init_client_delay_thread(void *ptr)
 {
     struct fsm_context   *ctx;
     struct packet        *temp_packet;
-    uint8_t              temp_delay;
 
     ctx                  = (struct fsm_context *) ptr;
     temp_packet          = &ctx -> args -> client_packet;
-    temp_delay           = ctx -> args -> client_delay_rate;
 
-    printf("Client packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
+    printf("Client packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n",
+           temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
+
     delay_packet(DELAY_TIME);
     send_packet(ctx -> args -> server_sockfd, temp_packet, &ctx -> args -> server_addr_struct);
 
-    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
+
+    printf("Client packet with seq number: %u ack number: %u flags: %u sent\n",
+           temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
+
     return NULL;
 }
 
@@ -598,16 +692,37 @@ void *init_server_delay_thread(void *ptr)
 {
     struct fsm_context   *ctx;
     struct packet        *temp_packet;
-    uint8_t              temp_delay;
 
     ctx                  = (struct fsm_context *) ptr;
     temp_packet          = &ctx -> args -> server_packet;
-    temp_delay           = ctx -> args -> server_delay_rate;
 
-    printf("Server packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
+    printf("Server packet with seq number: %u ack number: %u flags: %u delayed for %u seconds\n",
+           temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags, DELAY_TIME);
+
     delay_packet(DELAY_TIME);
     send_packet(ctx -> args -> client_sockfd, temp_packet, &ctx -> args -> client_addr_struct);
 
-    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n", temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+    }
+
+    printf("Server packet with seq number: %u ack number: %u flags: %u sent\n",
+           temp_packet -> hd.seq_number, temp_packet -> hd.ack_number, temp_packet -> hd.flags);
+
+    return NULL;
+}
+
+void *init_gui_function(void *ptr)
+{
+    struct fsm_context *ctx = (struct fsm_context*) ptr;
+    struct fsm_error err;
+
+    while(!exit_flag)
+    {
+        ctx->args->connected_gui_fd = socket_accept_connection(ctx->args->proxy_gui_fd, &err);
+        ctx->args->is_connected_gui++;
+    }
+
     return NULL;
 }
