@@ -147,7 +147,7 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
     return 0;
 }
 
-int send_stats_gui(int sockfd, uint8_t stat)
+int send_stats_gui(int sockfd, int stat)
 {
     uint8_t converted_size;
     ssize_t result;
