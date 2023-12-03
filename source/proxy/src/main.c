@@ -697,7 +697,7 @@ static int read_from_keyboard_handler(struct fsm_context *context, struct fsm_er
     while (!exit_flag)
     {
         read_keyboard(&ctx->args->client_drop_rate,&ctx->args->client_delay_rate,
-                      &ctx->args->server_drop_rate, &ctx->args->server_delay_rate );
+                      &ctx->args->server_drop_rate, &ctx->args->server_delay_rate, &ctx->args->corruption_rate );
     }
 
     return FSM_EXIT;

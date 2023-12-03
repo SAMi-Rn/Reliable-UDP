@@ -176,7 +176,7 @@ void *safe_malloc(uint32_t size, struct fsm_error *err)
     return ptr;
 }
 
-int send_stats_gui(int sockfd, uint8_t stat)
+int send_stats_gui(int sockfd, int stat)
 {
     ssize_t result;
 

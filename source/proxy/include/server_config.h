@@ -21,7 +21,7 @@ int         socket_close(int sockfd, struct fsm_error *err);
 int         convert_address(const char *address, struct sockaddr_storage *addr,
                             in_port_t port, struct fsm_error *err);
 int         socket_bind(int sockfd, struct sockaddr_storage *addr, in_port_t port, struct fsm_error *err);
-int         send_stats_gui(int sockfd, uint8_t stat);
+int         send_stats_gui(int sockfd, int stat);
 
 
 #endif //CLIENT_SERVER_CONFIG_H
