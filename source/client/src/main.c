@@ -748,8 +748,14 @@ void *init_gui_function(void *ptr)
     struct fsm_context *ctx = (struct fsm_context*) ptr;
     struct fsm_error err;
 
-    ctx -> args -> connected_gui_fd = socket_accept_connection(ctx -> args -> client_gui_fd, &err);
-    ctx -> args -> is_connected_gui++;
+    uint8_t x = SENT_PACKET;
+    while(!exit_flag)
+    {
+        ctx->args->connected_gui_fd = socket_accept_connection(ctx->args->client_gui_fd, &err);
+        printf("%u\n", ctx->args->connected_gui_fd);
+//        write(ctx->args->connected_gui_fd, &x, sizeof(uint8_t));
+        ctx->args->is_connected_gui++;
+    }
 
     return NULL;
 }

@@ -27,6 +27,6 @@ int             convert_address(const char *address, struct sockaddr_storage *ad
 socklen_t       size_of_address(struct sockaddr_storage *addr);
 int             get_sockaddr_info(struct sockaddr_storage *addr, char **ip_address, char **port, struct fsm_error *err);
 void            *safe_malloc(uint32_t size, struct fsm_error *err);
-int             send_stats_gui(int sockfd, uint8_t stat);
+int             send_stats_gui(int sockfd, int stat);
 
 #endif //CLIENT_SERVER_CONFIG_H
