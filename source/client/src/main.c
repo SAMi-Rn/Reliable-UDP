@@ -617,6 +617,10 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
             printf("removing from window\n");
             return STATE_REMOVE_FROM_WINDOW;
         }
+        else
+        {
+            return STATE_WAIT;
+        }
     }
     else if (result == END_CONNECTION)
     {
