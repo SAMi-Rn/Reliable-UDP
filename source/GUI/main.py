@@ -9,6 +9,7 @@ import time
 colors = [
     'red',
     'green',
+    'lightcyan',
     'blue',
     'yellow',
     'orange',
@@ -20,6 +21,7 @@ colors = [
 packet_types = [
     "SENT_PACKET",
     "RECEIVED_PACKET",
+    "RECEIVED_ACK",
     "RESENT_PACKET",
     "DROPPED_CLIENT_PACKET",
     "DELAYED_CLIENT_PACKET",
@@ -88,7 +90,6 @@ def start_plot(server_id, data):
 
 
 def start(data):
-
     server_descriptions = [('Server', '10.0.0.116', 61000),
                            ('Client', '10.0.0.116', 61001),
                            ('Proxy', '10.0.0.116', 61060)]
