@@ -105,7 +105,7 @@ socklen_t size_of_address(struct sockaddr_storage *addr)
     return addr->ss_family == AF_INET ? sizeof(struct sockaddr_in) : sizeof(struct sockaddr_in6);
 }
 
-void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay) {
+void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_drop, uint8_t *server_delay, uint8_t *corruption_rate) {
     int first_menu;
     int second_menu;
     int third_menu;
@@ -115,7 +115,8 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
     snprintf(menu, sizeof (menu), "\nDynamic Proxy Lossiness Value:\n"
                                   "1. Client Losiness:\n"
                                   "2. Server Losiness:\n"
-                                  "3. Exit:\n"
+                                  "3. Data Corruption\n"
+                                  "4. Exit:\n"
                                   "Enter your Answer: ");
 
     snprintf(client_menu, sizeof (client_menu), "Client Drop and Delay rate\n"
@@ -209,6 +210,16 @@ void read_keyboard(uint8_t *client_drop, uint8_t *client_delay, uint8_t *server_
                 }while(third_menu != 3);
                 break;
             case 3:
+                printf("Enter Data Corruption's Rate :");
+                int rate =  read_menu(100);
+                if(rate == -1)
+                {
+                    printf("Data Corruption's Rate value should be between 0-100!\n");
+                    break;
+                }
+                *corruption_rate = (uint8_t) rate;
+                break;
+            case 4:
                 return;
             case -1:
                 printf("It is not valid, try again\n");
