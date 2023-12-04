@@ -100,7 +100,7 @@ int first_unacked_ring_buffer(struct sent_packet *window)
 
 
 int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
-                struct packet *pt, struct fsm_error *err)
+                struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     ssize_t result;
 
@@ -118,6 +118,15 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
         SET_ERROR(err, strerror(errno));
         return -1;
     }
+
+    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
+            pt -> hd.seq_number,
+            pt -> hd.ack_number,
+            pt -> hd.flags,
+            pt -> hd.window_size,
+            pt -> hd.checksum,
+            pt -> data);
+    fflush(fp);
 
     return 0;
 }
@@ -158,7 +167,8 @@ int add_packet_to_window(struct sent_packet *window, struct packet *pt)
     return 0;
 }
 
-int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, FILE *fp,
+                    struct fsm_error *err)
 {
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
@@ -180,6 +190,15 @@ int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, st
     printf("seq number: %u\n", pt->hd.seq_number);
     printf("ack number: %u\n", pt->hd.ack_number);
     printf("flags: %u\n", pt->hd.flags);
+
+    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
+            pt -> hd.seq_number,
+            pt -> hd.ack_number,
+            pt -> hd.flags,
+            pt -> hd.window_size,
+            pt -> hd.checksum,
+            pt -> data);
+    fflush(fp);
 
     window_empty(window);
 

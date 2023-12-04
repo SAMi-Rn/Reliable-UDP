@@ -26,7 +26,7 @@ typedef struct header
     uint32_t                    ack_number;
     uint8_t                     flags;
     uint8_t                     window_size;
-    uint8_t                     checksum;
+    uint16_t                    checksum;
     struct timeval              tv;
 } header;
 
@@ -36,8 +36,10 @@ typedef struct packet
     char            data[DATA_SIZE];
 } packet;
 
-int                 send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err);
-int                 receive_packet(int sockfd, struct packet *temp_packet, struct fsm_error *err);
+int                 send_packet(int sockfd, struct sockaddr_storage *addr,
+                                struct packet *pt, FILE *fp, struct fsm_error *err);
+int                 receive_packet(int sockfd, struct packet *temp_packet, FILE *fp,
+                                    struct fsm_error *err);
 uint32_t            create_second_handshake_seq_number(void);
 uint32_t            create_ack_number(uint32_t previous_ack_number, uint32_t data_size);
 uint32_t            create_sequence_number(uint32_t prev_seq_number, uint32_t data_size);
@@ -45,5 +47,6 @@ int                 check_seq_number(uint32_t seq_number, uint32_t expected_seq_
 uint32_t            update_expected_seq_number(uint32_t seq_number, uint32_t data_size);
 int                 check_if_equal(uint32_t seq_number, uint32_t expected_seq_number);
 int                 check_if_less(uint32_t seq_number, uint32_t expected_seq_number);
+int                 write_stats_to_file(FILE *fp, const struct packet *pt);
 
 #endif //CLIENT_PACKET_CONFIG_H

@@ -59,7 +59,6 @@ enum gui_stats
     CORRUPTED_DATA
 };
 
-
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
