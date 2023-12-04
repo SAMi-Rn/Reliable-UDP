@@ -147,6 +147,17 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
     return 0;
 }
 
+int socket_close(int sockfd, struct fsm_error *err)
+{
+    if (close(sockfd) == -1)
+    {
+        SET_ERROR(err, strerror(errno));
+        return -1;
+    }
+
+    return 0;
+}
+
 int send_stats_gui(int sockfd, int stat)
 {
     uint8_t converted_size;
