@@ -112,6 +112,7 @@ typedef struct arguments
 } arguments;
 
 
+pthread_mutex_t num_of_threads_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 int main(int argc, char **argv)
 {
@@ -531,14 +532,7 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
     pthread_t *temp_thread_pool;
 
     ctx = context;
-//    for (int i = 0; i < ctx -> args -> num_of_threads; i++)
-//    {
-//        if (ctx -> args -> thread_pool[i] == NULL)
-//        {
-//            free(ctx -> args -> thread_pool[i]);
-//        }
-//
-//    }
+
     temp_thread_pool = ctx -> args -> thread_pool;
     SET_TRACE(context, "", "STATE_CREATE_TIMER_THREAD");
     ctx -> args -> num_of_threads++;
@@ -552,6 +546,7 @@ static int create_timer_thread_handler(struct fsm_context *context, struct fsm_e
     ctx -> args -> thread_pool = temp_thread_pool;
 
     pthread_create(&ctx->args->thread_pool[ctx->args->num_of_threads], NULL, init_timer_function, (void *) ctx);
+    usleep(1000);
 
     return STATE_READ_FROM_KEYBOARD;
 }
@@ -620,7 +615,7 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
-        printf("Server packet with ack number: %u received\n", ctx -> args -> temp_packet.hd.ack_number);
+        printf("Server packet with ack number: %u flags: %u received\n", ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> temp_packet.hd.flags);
 
         return STATE_CHECK_ACK_NUMBER;
     }
@@ -662,6 +657,12 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
         create_handshake_ack_packet(ctx->args->sockfd, &ctx -> args -> server_addr_struct,
                                     ctx -> args -> window,&ctx -> args -> temp_packet,
                                     ctx -> args -> sent_data, err);
+
+        if (ctx -> args -> is_connected_gui)
+        {
+            send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
+        }
+
         return STATE_WAIT;
     }
 
@@ -672,7 +673,7 @@ static int remove_packet_from_window_handler(struct fsm_context *context, struct
 {
     struct fsm_context *ctx;
     ctx = context;
-    SET_TRACE(context, "", "STATE_CHECK_ACK_NUMBER");
+    SET_TRACE(context, "", "STATE_REMOVE_FROM_WINDOW");
 
     remove_packet_from_window(ctx -> args -> window, &ctx -> args -> temp_packet);
 
@@ -735,18 +736,23 @@ void *init_timer_function(void *ptr)
 {
     struct fsm_context  *ctx;
     struct fsm_error    err;
-    int                 index;
-    int                 counter;
+    int                 index, counter;
+    uint32_t            temp_seq_number;
 
     ctx                 = (struct fsm_context*) ptr;
+//    pthread_mutex_lock(&num_of_threads_mutex);
     index               = previous_index(ctx -> args -> window);
+    temp_seq_number     = ctx -> args -> window[index].pt.hd.seq_number;
+//    pthread_mutex_unlock(&num_of_threads_mutex);
     counter             = 0;
 
-    printf("created timer for packet at index: %d with seq number: %u and: %u\n", index,ctx -> args -> window[index].pt.hd.seq_number, ctx -> args -> window[index].is_packet_full);
-    while (ctx -> args -> window[index].is_packet_full)
+//    printf("created timer for packet at index: %d with seq number: %u and: %u\n", index,ctx -> args -> window[index].pt.hd.seq_number, ctx -> args -> window[index].is_packet_full);
+    while (ctx -> args -> window[index].pt.hd.seq_number == temp_seq_number
+            && ctx -> args -> window[index].is_packet_full)
     {
         sleep(TIMER_TIME);
-        if (ctx -> args -> window[index].is_packet_full)
+//        printf("in timer the window: %d for index: %d\n", ctx -> args -> window[index].is_packet_full, index);
+        if (ctx -> args -> window[index].is_packet_full && ctx -> args -> window[index].pt.hd.seq_number == temp_seq_number)
         {
             send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
                         ctx -> args -> window, &ctx -> args -> window[index].pt,
