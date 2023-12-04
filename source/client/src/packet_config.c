@@ -107,11 +107,11 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
     result = sendto(sockfd, pt, sizeof(*pt), 0, (struct sockaddr *) addr,
                     size_of_address(addr));
 
-    printf("\n\nSENDING:\n");
-    printf("seq number: %u\n", pt->hd.seq_number);
-    printf("flags: %u\n", pt->hd.flags);
-    printf("checksum: %u\n", pt->hd.checksum);
-    printf("data: %s\n\n\n\n", pt->data);
+//    printf("\n\nSENDING:\n");
+//    printf("seq number: %u\n", pt->hd.seq_number);
+//    printf("flags: %u\n", pt->hd.flags);
+//    printf("checksum: %u\n", pt->hd.checksum);
+//    printf("data: %s\n\n\n\n", pt->data);
 
     if (result < 0)
     {
@@ -119,14 +119,7 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *w
         return -1;
     }
 
-    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
-            pt -> hd.seq_number,
-            pt -> hd.ack_number,
-            pt -> hd.flags,
-            pt -> hd.window_size,
-            pt -> hd.checksum,
-            pt -> data);
-    fflush(fp);
+    write_stats_to_file(fp, pt);
 
     return 0;
 }
@@ -186,20 +179,12 @@ int receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, FI
 
     *pt = temp_pt;
 
-    printf("\n\nRECEIVED:\n");
-    printf("seq number: %u\n", pt->hd.seq_number);
-    printf("ack number: %u\n", pt->hd.ack_number);
-    printf("flags: %u\n", pt->hd.flags);
+//    printf("\n\nRECEIVED:\n");
+//    printf("seq number: %u\n", pt->hd.seq_number);
+//    printf("ack number: %u\n", pt->hd.ack_number);
+//    printf("flags: %u\n", pt->hd.flags);
 
-    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
-            pt -> hd.seq_number,
-            pt -> hd.ack_number,
-            pt -> hd.flags,
-            pt -> hd.window_size,
-            pt -> hd.checksum,
-            pt -> data);
-    fflush(fp);
-
+    write_stats_to_file(fp, pt);
     window_empty(window);
 
     return 0;
@@ -276,4 +261,18 @@ int previous_index(struct sent_packet *window)
     }
 
     return first_empty_packet - 1;
+}
+
+int write_stats_to_file(FILE *fp, const struct packet *pt)
+{
+    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
+            pt -> hd.seq_number,
+            pt -> hd.ack_number,
+            pt -> hd.flags,
+            pt -> hd.window_size,
+            pt -> hd.checksum,
+            pt -> data);
+    fflush(fp);
+
+    return 0;
 }

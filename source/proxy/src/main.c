@@ -173,16 +173,7 @@ int main(int argc, char **argv)
     srand(time(NULL));
 
     fsm_run(&context, &err, transitions);
-//
-//    char *msg;
-//
-//    msg = (char *) malloc(100);
-//
-//    strcpy(msg, "hello world this is message one");
-//
-//    corrupt_data(&msg, strlen(msg));
-//
-//    printf("corrupt: %s\n", msg);
+
     return 0;
 }
 
@@ -486,6 +477,10 @@ static int client_corrupt_packet_handler(struct fsm_context *context, struct fsm
 
     strcpy(ctx -> args -> client_packet.data, temp);
 
+    printf("Client packet with seq number: %u ack number: %u flags: %u corrupted\n",
+           ctx -> args -> client_packet.hd.seq_number, ctx -> args -> client_packet.hd.ack_number,
+           ctx -> args -> client_packet.hd.flags);
+
     return STATE_SEND_CLIENT_PACKET;
 }
 
@@ -661,6 +656,10 @@ static int server_corrupt_packet_handler(struct fsm_context *context, struct fsm
     corrupt_data(&temp, strlen(ctx -> args -> server_packet.data));
 
     strcpy(ctx -> args -> server_packet.data, temp);
+
+    printf("Server packet with seq number: %u ack number: %u flags: %u corrupted\n",
+           ctx -> args -> server_packet.hd.seq_number, ctx -> args -> server_packet.hd.ack_number,
+           ctx -> args -> server_packet.hd.flags);
 
     return STATE_SEND_SERVER_PACKET;
 }

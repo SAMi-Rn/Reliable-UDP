@@ -62,6 +62,7 @@ uint32_t            previous_ack_number(struct sent_packet *window);
 uint32_t            previous_data_size(struct sent_packet *window);
 int                 check_ack_number(uint32_t expected_ack_number, uint32_t ack_number);
 int                 previous_index(struct sent_packet *window);
+int                 write_stats_to_file(FILE *fp, const struct packet *pt);
 
 
 #endif //CLIENT_PACKET_CONFIG_H
