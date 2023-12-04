@@ -338,6 +338,11 @@ static int check_seq_number_handler(struct fsm_context *context, struct fsm_erro
         return STATE_SEND_PACKET;
     }
 
+    if (ctx -> args -> is_connected_gui)
+    {
+        send_stats_gui(ctx -> args -> connected_gui_fd, DROPPED_CLIENT_PACKET);
+    }
+
     return STATE_WAIT;
 }
 
@@ -347,6 +352,7 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
     ctx = context;
     SET_TRACE(context, "in connect socket", "STATE_START_HANDSHAKE");
     ctx -> args -> is_handshake_ack++;
+    printf("handshake ack: %d\n", ctx -> args -> is_handshake_ack);
     create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                          &ctx -> args -> temp_packet, ctx -> args -> sent_data, err);
 
@@ -395,6 +401,7 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
     SET_TRACE(context, "", "STATE_WAIT_FOR_ACK");
     while (!exit_flag)
     {
+        printf("in wait for ack\n");
         result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet,
                                 ctx -> args -> received_data, err);
 
@@ -418,7 +425,7 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
         if (check_if_less(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
         {
             read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                                 &ctx -> args -> temp_packet, ctx -> args -> received_data, err);
+                                 &ctx -> args -> temp_packet, ctx -> args -> sent_data, err);
         }
     }
 
@@ -524,7 +531,7 @@ void *init_timer_function(void *ptr)
         sleep(TIMER_TIME);
         if (ctx -> args -> is_handshake_ack)
         {
-            send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
+            send_packet(ctx->args->sockfd, &ctx->args->client_addr_struct,
                         &packet_to_send, ctx -> args -> sent_data, &err);
 
             if (ctx -> args -> is_connected_gui)

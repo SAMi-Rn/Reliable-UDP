@@ -381,7 +381,8 @@ static int wait_for_syn_ack_handler(struct fsm_context *context, struct fsm_erro
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
-        printf("Server packet with ack number: %u received\n", ctx -> args -> temp_packet.hd.ack_number);
+        printf("Server packet with ack number: %u flag: %u received\n", ctx -> args -> temp_packet.hd.ack_number,
+               ctx -> args -> temp_packet.hd.flags);
 
         if (ctx -> args -> temp_packet.hd.flags == SYNACK)
         {
@@ -510,6 +511,12 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
         return STATE_ERROR;
     }
 
+    for (int i = 0; i < ctx -> args -> window_size; i++)
+    {
+        printf("window empty: %u\n", ctx -> args -> window[i].is_packet_full);
+    }
+    printf("Client packet with SYN number: %u sent\n", ctx -> args -> temp_message.hd.seq_number);
+
     if (ctx -> args -> is_connected_gui)
     {
         send_stats_gui(ctx -> args -> connected_gui_fd, SENT_PACKET);
@@ -633,6 +640,7 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
 
     if (result == RECV_ACK)
     {
+        printf("received ack\n");
         if (check_ack_number(ctx -> args -> window[first_unacked_packet].expected_ack_number,
                              ctx -> args -> temp_packet.hd.ack_number))
         {
@@ -734,6 +742,7 @@ void *init_timer_function(void *ptr)
     index               = previous_index(ctx -> args -> window);
     counter             = 0;
 
+    printf("created timer for packet at index: %d with seq number: %u and: %u\n", index,ctx -> args -> window[index].pt.hd.seq_number, ctx -> args -> window[index].is_packet_full);
     while (ctx -> args -> window[index].is_packet_full)
     {
         sleep(TIMER_TIME);
