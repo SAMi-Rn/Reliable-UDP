@@ -48,10 +48,10 @@ int fsm_run(struct fsm_context *context, struct fsm_error *err,
     } while (0)
 
 #define SET_TRACE(ctx, msg, curr_state) \
-    do { \
-        printf("TRACE: %s \nEntered state at line %d.\n\n", \
-               curr_state, __LINE__);   \
-        fflush(stdout);       \
-    } while (0)
+//    do { \
+//        printf("TRACE: %s \nEntered state at line %d.\n\n", \
+//               curr_state, __LINE__);   \
+//        fflush(stdout);       \
+//    } while (0)
 
 #endif //CLIENT_FSM_H

@@ -59,7 +59,7 @@ int calculate_corruption(uint8_t percentage)
     return rand > percentage ? FALSE : TRUE;
 }
 
-int send_packet(int sockfd, packet *pt, struct sockaddr_storage *addr)
+int send_packet(int sockfd, packet *pt, struct sockaddr_storage *addr, FILE *fp)
 {
     ssize_t result;
 
@@ -71,10 +71,12 @@ int send_packet(int sockfd, packet *pt, struct sockaddr_storage *addr)
         return -1;
     }
 
+    write_stats_to_file(fp, pt);
+
     return 0;
 }
 
-int receive_packet(int sockfd, struct packet *pt)
+int receive_packet(int sockfd, struct packet *pt, FILE *fp)
 {
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
@@ -91,6 +93,7 @@ int receive_packet(int sockfd, struct packet *pt)
     }
 
     *pt = temp_pt;
+    write_stats_to_file(fp, pt);
 
     return 0;
 }
@@ -278,6 +281,20 @@ int corrupt_data(char **data, size_t length)
     }
 
     *data = temp;
+
+    return 0;
+}
+
+int write_stats_to_file(FILE *fp, const struct packet *pt)
+{
+    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
+            pt -> hd.seq_number,
+            pt -> hd.ack_number,
+            pt -> hd.flags,
+            pt -> hd.window_size,
+            pt -> hd.checksum,
+            pt -> data);
+    fflush(fp);
 
     return 0;
 }
