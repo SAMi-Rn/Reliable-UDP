@@ -76,6 +76,7 @@ uint32_t create_ack_number(uint32_t recv_seq_number, uint32_t data_size)
 
 int check_seq_number(uint32_t seq_number, uint32_t expected_seq_number)
 {
+    printf("expected: %u got: %u\n", expected_seq_number, seq_number);
     return check_if_equal(seq_number, expected_seq_number) || check_if_less(seq_number, expected_seq_number);
 }
 
