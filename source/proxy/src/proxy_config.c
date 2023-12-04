@@ -7,7 +7,7 @@ int random_number(size_t upperbound)
 
 int calculate_lossiness(uint8_t drop_rate, uint8_t delay_rate, uint8_t corruption_rate)
 {
-    printf("delay: %u drop %u\n", delay_rate, drop_rate);
+    printf("delay: %u drop %u corruption: %u\n", delay_rate, drop_rate, corruption_rate);
     if (drop_rate > 0)
     {
         if (calculate_drop(drop_rate))

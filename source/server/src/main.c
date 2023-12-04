@@ -411,18 +411,15 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
         if (ctx -> args -> temp_packet.hd.flags == ACK &&
             check_if_equal(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
         {
-            printf("received handshake ack\n");
             ctx -> args -> is_handshake_ack = 0;
             return STATE_WAIT;
         }
 
         if (check_if_less(ctx -> args -> temp_packet.hd.seq_number, ctx -> args -> expected_seq_number))
         {
-            printf("received less seq number\n");
             read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
                                  &ctx -> args -> temp_packet, ctx -> args -> received_data, err);
         }
-        printf("received some garbage\n");
     }
 
     return STATE_CLEANUP;
@@ -448,7 +445,6 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
         return STATE_WAIT;
     }
 
-    printf("%s\n", ctx -> args -> temp_packet.data);
     return STATE_UPDATE_SEQ_NUMBER;
 }
 

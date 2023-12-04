@@ -275,7 +275,7 @@ int compare_checksum(uint16_t checksum, const char *data, size_t length)
 
     calculate_checksum(&new_checksum, data, length);
 
-    printf("new: %u, old: %u", new_checksum, checksum);
+//    printf("new: %u, old: %u", new_checksum, checksum);
 
     return new_checksum == checksum;
 }

@@ -381,7 +381,7 @@ static int wait_for_syn_ack_handler(struct fsm_context *context, struct fsm_erro
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
-        printf("Server packet with seq number: %u received\n", ctx -> args -> temp_packet.hd.seq_number);
+        printf("Server packet with ack number: %u received\n", ctx -> args -> temp_packet.hd.ack_number);
 
         if (ctx -> args -> temp_packet.hd.flags == SYNACK)
         {
@@ -613,7 +613,7 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
             send_stats_gui(ctx -> args -> connected_gui_fd, RECEIVED_PACKET);
         }
 
-        printf("Server packet with seq number: %u received\n", ctx -> args -> temp_packet.hd.seq_number);
+        printf("Server packet with ack number: %u received\n", ctx -> args -> temp_packet.hd.ack_number);
 
         return STATE_CHECK_ACK_NUMBER;
     }
@@ -633,11 +633,9 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
 
     if (result == RECV_ACK)
     {
-        printf("received ack\n");
         if (check_ack_number(ctx -> args -> window[first_unacked_packet].expected_ack_number,
                              ctx -> args -> temp_packet.hd.ack_number))
         {
-            printf("removing from window\n");
             return STATE_REMOVE_FROM_WINDOW;
         }
         else
@@ -750,6 +748,7 @@ void *init_timer_function(void *ptr)
                 send_stats_gui(ctx -> args -> connected_gui_fd, RESENT_PACKET);
             }
 
+            printf("Resent packet with seq number: %u\n", ctx -> args -> window[index].pt.hd.seq_number);
             counter++;
         }
     }
