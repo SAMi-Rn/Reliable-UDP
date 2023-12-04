@@ -4,3 +4,4 @@ video/
 
 .idea/
 files_to_send/
+*.csv
