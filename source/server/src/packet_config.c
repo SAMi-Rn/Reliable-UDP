@@ -1,7 +1,8 @@
 #include <netinet/in.h>
 #include "packet_config.h"
 
-int send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, struct fsm_error *err)
+int send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt,
+        FILE *fp, struct fsm_error *err)
 {
     ssize_t result;
 
@@ -23,10 +24,12 @@ int send_packet(int sockfd, struct sockaddr_storage *addr, struct packet *pt, st
     printf("time: %ld\n", pt->hd.tv.tv_sec);
     printf("data: %s\n\n", pt->data);
 
+    write_stats_to_file(fp, pt);
+
     return 0;
 }
 
-int receive_packet(int sockfd, struct packet *temp_packet, struct fsm_error *err)
+int receive_packet(int sockfd, struct packet *temp_packet, FILE *fp, struct fsm_error *err)
 {
     struct sockaddr_storage     client_addr;
     socklen_t                   client_addr_len;
@@ -50,6 +53,8 @@ int receive_packet(int sockfd, struct packet *temp_packet, struct fsm_error *err
     printf("data: %s\n\n\n\n", pt.data);
 
     *temp_packet = pt;
+
+    write_stats_to_file(fp, &pt);
 
     return 0;
 }
@@ -88,4 +93,18 @@ uint32_t update_expected_seq_number(uint32_t seq_number, uint32_t data_size)
 {
     printf("expected: %u\n", seq_number + data_size);
     return seq_number + data_size;
+}
+
+int write_stats_to_file(FILE *fp, const struct packet *pt)
+{
+    fprintf(fp, "%u,%u,%u,%u,%u,%s\n",
+            pt -> hd.seq_number,
+            pt -> hd.ack_number,
+            pt -> hd.flags,
+            pt -> hd.window_size,
+            pt -> hd.checksum,
+            pt -> data);
+    fflush(fp);
+
+    return 0;
 }

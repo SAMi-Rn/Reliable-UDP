@@ -61,6 +61,7 @@ static int error_handler(struct fsm_context *context, struct fsm_error *err);
 
 static void                     sigint_handler(int signum);
 static int                      setup_signal_handler(struct fsm_error *err);
+int                             create_file(const char *filepath, FILE **fp, struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
@@ -78,6 +79,7 @@ typedef struct arguments
     uint32_t                expected_seq_number;
     pthread_t               accept_gui_thread;
     pthread_t               *thread_pool;
+    FILE                    *sent_data, *received_data;
 } arguments;
 
 int main(int argc, char **argv)
@@ -160,6 +162,16 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
                          ctx -> args -> client_addr, ctx -> args -> server_port_str,
                          ctx -> args -> client_port_str, &ctx -> args -> server_port,
                          &ctx -> args -> client_port, err) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    if (create_file("../server_received_data.csv", &ctx -> args -> received_data, err) == -1)
+    {
+        return STATE_ERROR;
+    }
+
+    if (create_file("../server_sent_data.csv", &ctx -> args -> sent_data, err) == -1)
     {
         return STATE_ERROR;
     }
@@ -271,7 +283,8 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     SET_TRACE(context, "", "STATE_LISTEN_SERVER");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet,
+                                ctx -> args -> received_data, err);
 
         if (result == -1)
         {
@@ -335,10 +348,10 @@ static int send_syn_ack_handler(struct fsm_context *context, struct fsm_error *e
     SET_TRACE(context, "in connect socket", "STATE_START_HANDSHAKE");
     ctx -> args -> is_handshake_ack++;
     create_syn_ack_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                         &ctx -> args -> temp_packet, err);
+                         &ctx -> args -> temp_packet, ctx -> args -> sent_data, err);
 
     send_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                &ctx -> args -> temp_packet, err);
+                &ctx -> args -> temp_packet, ctx -> args -> sent_data, err);
 
     if (ctx -> args -> is_connected_gui)
     {
@@ -382,7 +395,8 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
     SET_TRACE(context, "", "STATE_WAIT_FOR_ACK");
     while (!exit_flag)
     {
-        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet, err);
+        result = receive_packet(ctx->args->sockfd, &ctx -> args -> temp_packet,
+                                ctx -> args -> received_data, err);
 
         if (result == -1)
         {
@@ -406,7 +420,7 @@ static int wait_for_ack_handler(struct fsm_context *context, struct fsm_error *e
         {
             printf("received less seq number\n");
             read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                                 &ctx -> args -> temp_packet, err);
+                                 &ctx -> args -> temp_packet, ctx -> args -> received_data, err);
         }
         printf("received some garbage\n");
     }
@@ -421,7 +435,8 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> client_addr_struct,
-                             &ctx -> args -> temp_packet, err);
+                             &ctx -> args -> temp_packet,
+                             ctx -> args -> sent_data, err);
 
     if (ctx -> args -> is_connected_gui)
     {
@@ -482,6 +497,9 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
         printf("close socket error");
     }
 
+    fclose(ctx -> args -> sent_data);
+    fclose(ctx -> args -> received_data);
+
     return FSM_EXIT;
 }
 
@@ -511,7 +529,7 @@ void *init_timer_function(void *ptr)
         if (ctx -> args -> is_handshake_ack)
         {
             send_packet(ctx->args->sockfd, &ctx->args->server_addr_struct,
-                        &packet_to_send, &err);
+                        &packet_to_send, ctx -> args -> sent_data, &err);
 
             if (ctx -> args -> is_connected_gui)
             {
@@ -537,4 +555,18 @@ void *init_gui_function(void *ptr)
     }
 
     return NULL;
+}
+
+int create_file(const char *filepath, FILE **fp, struct fsm_error *err)
+{
+    *fp = fopen(filepath, "w");
+
+    if(*fp == NULL)
+    {
+        SET_ERROR(err, "Error in opening file.");
+
+        return -1;
+    }
+
+    return 0;
 }

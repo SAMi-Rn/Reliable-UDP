@@ -15,7 +15,7 @@ typedef struct header
     uint32_t                    ack_number;
     uint8_t                     flags;
     uint8_t                     window_size;
-    uint8_t                     checksum;
+    uint16_t                    checksum;
     struct timeval              tv;
 } header;
 

@@ -1,6 +1,6 @@
 #include "protocol.h"
 
-int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     int result;
 
@@ -11,27 +11,27 @@ int read_received_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     {
         case ESTABLISH_HANDSHAKE:
         {
-            send_syn_ack_packet(sockfd, addr, window, pt, err);
+            send_syn_ack_packet(sockfd, addr, window, pt, fp, err);
             break;
         }
         case SEND_HANDSHAKE_ACK:
         {
-            send_handshake_ack_packet(sockfd, addr, window, pt, err);
+            send_handshake_ack_packet(sockfd, addr, window, pt, fp, err);
             break;
         }
         case SEND_ACK:
         {
-            send_data_ack_packet(sockfd, addr, window, pt, err);
+            send_data_ack_packet(sockfd, addr, window, pt, fp, err);
             break;
         }
         case RECV_ACK:
         {
-            recv_ack_packet(sockfd, addr, window, pt, err);
+            recv_ack_packet(sockfd, addr, window, pt, fp, err);
             break;
         }
         case END_CONNECTION:
         {
-            recv_termination_request(sockfd, addr, window, pt, err);
+            recv_termination_request(sockfd, addr, window, pt, fp, err);
             break;
         }
         case RECV_RST:
@@ -80,7 +80,8 @@ int read_flags(uint8_t flags)
     return UNKNOWN_FLAG;
 }
 
-int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err)
+int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                    FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -91,13 +92,14 @@ int send_syn_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packe
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                        struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -108,13 +110,14 @@ int send_syn_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_p
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                         struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -125,13 +128,14 @@ int finish_handshake_ack(int sockfd, struct sockaddr_storage *addr, struct sent_
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                              struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -142,13 +146,14 @@ int send_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct 
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, char *data, struct fsm_error *err)
+int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                    char *data, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -159,13 +164,14 @@ int send_data_packet(int sockfd, struct sockaddr_storage *addr, struct sent_pack
     strcpy(packet_to_send.data, data);
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                         struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -176,26 +182,29 @@ int send_data_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     add_packet_to_window(window, &packet_to_send);
 
     return 0;
 }
 
-int recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int recv_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                    struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     // check if incoming ack is same as expected ack
     return 0;
 }
 
-int recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int recv_termination_request(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                             struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     // send ack and then check if all packets have been acked
     // then send fin ack
     return 0;
 }
 
-int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct fsm_error *err)
+int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                         FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -204,7 +213,7 @@ int initiate_termination(int sockfd, struct sockaddr_storage *addr, struct sent_
     packet_to_send.hd.flags                 = FINACK;
     packet_to_send.hd.window_size           = window_size;
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     return 0;
 }
 
@@ -251,7 +260,8 @@ int create_data_packet(struct packet *pt, struct sent_packet *window, char *data
     return 0;
 }
 
-int create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err)
+int create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window,
+                                struct packet *pt, FILE *fp, struct fsm_error *err)
 {
     struct packet packet_to_send;
 
@@ -262,13 +272,13 @@ int create_handshake_ack_packet(int sockfd, struct sockaddr_storage *addr, struc
     memset(packet_to_send.data, 0, sizeof(packet_to_send.data));
     calculate_checksum(&packet_to_send.hd.checksum, packet_to_send.data, strlen(packet_to_send.data));
 
-    send_packet(sockfd, addr, window, &packet_to_send, err);
+    send_packet(sockfd, addr, window, &packet_to_send, fp, err);
     *pt = packet_to_send;
 
     return 0;
 }
 
-int calculate_checksum(uint8_t *checksum, const char *data, size_t length)
+int calculate_checksum(uint16_t *checksum, const char *data, size_t length)
 {
     *checksum = checksum_one(data, length) * checksum_two(data, length);
 

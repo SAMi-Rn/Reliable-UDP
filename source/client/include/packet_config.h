@@ -25,7 +25,7 @@ typedef struct header
     uint32_t                    ack_number;
     uint8_t                     flags;
     uint8_t                     window_size;
-    uint8_t                     checksum;
+    uint16_t                    checksum;
     struct timeval              tv;
 } header;
 
@@ -47,9 +47,12 @@ int                 create_window(struct sent_packet **window, uint8_t window_si
 int                 window_empty(struct sent_packet *window);
 int                 first_packet_ring_buffer(struct sent_packet *window);
 int                 first_unacked_ring_buffer(struct sent_packet *window);
-int                 send_packet(int sockfd, struct sockaddr_storage *addr, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 send_packet(int sockfd, struct sockaddr_storage *addr,
+                                struct sent_packet *window, struct packet *pt,
+                                FILE *fp, struct fsm_error *err);
 int                 add_packet_to_window(struct sent_packet *window, struct packet *pt);
-int                 receive_packet(int sockfd, struct sent_packet *window, struct packet *pt, struct fsm_error *err);
+int                 receive_packet(int sockfd, struct sent_packet *window,
+                                    struct packet *pt, FILE *fp, struct fsm_error *err);
 int                 remove_packet_from_window(struct sent_packet *window, struct packet *pt);
 uint32_t            create_second_handshake_seq_number(void);
 uint32_t            create_ack_number(uint32_t previous_ack_number, uint32_t data_size);

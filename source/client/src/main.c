@@ -55,7 +55,6 @@ enum gui_stats
     CORRUPTED_DATA
 };
 
-
 static int parse_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int handle_arguments_handler(struct fsm_context *context, struct fsm_error *err);
 static int convert_address_handler(struct fsm_context *context, struct fsm_error *err);
@@ -87,6 +86,7 @@ static int termination_handler(struct fsm_context *context, struct fsm_error *er
 
 static void                     sigint_handler(int signum);
 static int                      setup_signal_handler(struct fsm_error *err);
+int                             create_file(const char *filepath, FILE **fp, struct fsm_error *err);
 
 static volatile sig_atomic_t exit_flag = 0;
 
@@ -108,6 +108,7 @@ typedef struct arguments
     struct packet           temp_packet, temp_message;
     char                    *temp_buffer;
     struct node             *head;
+    FILE                    *sent_data, *received_data;
 } arguments;
 
 
@@ -167,15 +168,6 @@ int main(int argc, char **argv)
 
     fsm_run(&context, &err, transitions);
 
-//    uint8_t checksum;
-//    char msg[20];
-//
-//    strcpy(msg, "hel");
-//
-//    calculate_checksum(&checksum, msg, strlen(msg));
-//
-//    printf(": %u",checksum);
-
     return 0;
 }
 
@@ -204,6 +196,16 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
                          ctx -> args -> client_addr, ctx -> args -> server_port_str,
                          ctx -> args -> client_port_str, &ctx -> args -> server_port,
                          &ctx -> args -> client_port, ctx -> args -> window_size, err) != 0)
+    {
+        return STATE_ERROR;
+    }
+
+    if (create_file("../client_received_data.csv", &ctx -> args -> received_data, err) == -1)
+    {
+        return STATE_ERROR;
+    }
+
+    if (create_file("../client_sent_data.csv", &ctx -> args -> sent_data, err) == -1)
     {
         return STATE_ERROR;
     }
@@ -321,7 +323,8 @@ static int start_handshake_handler(struct fsm_context *context, struct fsm_error
     struct fsm_context *ctx;
     ctx = context;
     SET_TRACE(context, "in connect socket", "STATE_START_HANDSHAKE");
-    if (send_syn_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct, ctx -> args -> window, err))
+    if (send_syn_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
+                        ctx -> args -> window, ctx -> args -> sent_data, err))
     {
         return STATE_ERROR;
     }
@@ -366,7 +369,8 @@ static int wait_for_syn_ack_handler(struct fsm_context *context, struct fsm_erro
     while (!exit_flag)
     {
         result = receive_packet(ctx->args->sockfd, ctx -> args -> window,
-                                &ctx -> args -> temp_packet, err);
+                                &ctx -> args -> temp_packet, ctx -> args -> received_data,
+                                err);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -394,7 +398,8 @@ static int send_handshake_ack_handler(struct fsm_context *context, struct fsm_er
     ctx = context;
     SET_TRACE(context, "in connect socket", "STATE_SEND_HANDSHAKE_ACK");
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                         ctx -> args -> window, &ctx -> args -> temp_packet, err);
+                         ctx -> args -> window, &ctx -> args -> temp_packet,
+                         ctx -> args -> sent_data, err);
 
     if (ctx -> args -> is_connected_gui)
     {
@@ -499,7 +504,8 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     if (send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                    ctx -> args -> window, &ctx -> args -> temp_message, err) == -1)
+                    ctx -> args -> window, &ctx -> args -> temp_message,
+                    ctx -> args -> sent_data, err) == -1)
     {
         return STATE_ERROR;
     }
@@ -559,8 +565,21 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
         pthread_join(ctx -> args -> thread_pool[i], NULL);
     }
 
+    if (socket_close(ctx -> args -> client_gui_fd, err))
+    {
+        printf("close socket error");
+    }
+
+    if (socket_close(ctx -> args -> connected_gui_fd, err))
+    {
+        printf("close socket error");
+    }
+
     free(ctx -> args -> thread_pool);
     free(ctx -> args -> window);
+    fclose(ctx -> args -> sent_data);
+    fclose(ctx -> args -> received_data);
+
     return FSM_EXIT;
 }
 
@@ -582,7 +601,8 @@ static int wait_handler(struct fsm_context *context, struct fsm_error *err)
     while (!exit_flag)
     {
         result = receive_packet(ctx->args->sockfd, ctx -> args -> window,
-                                &ctx -> args -> temp_packet, err);
+                                &ctx -> args -> temp_packet, ctx -> args -> received_data,
+                                err);
         if (result == -1)
         {
             return STATE_ERROR;
@@ -634,7 +654,8 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
         printf("recieved syn ack again\n");
         packet pt = ctx -> args -> temp_packet;
         create_handshake_ack_packet(ctx->args->sockfd, &ctx -> args -> server_addr_struct,
-                                    ctx -> args -> window,&ctx -> args -> temp_packet, err);
+                                    ctx -> args -> window,&ctx -> args -> temp_packet,
+                                    ctx -> args -> sent_data, err);
         return STATE_WAIT;
     }
 
@@ -664,7 +685,8 @@ static int send_packet_handler(struct fsm_context *context, struct fsm_error *er
     SET_TRACE(context, "", "STATE_SEND_PACKET");
 
     read_received_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                         ctx -> args -> window, &ctx -> args -> temp_packet, err);
+                         ctx -> args -> window, &ctx -> args -> temp_packet,
+                         ctx -> args -> sent_data, err);
 
     if (ctx -> args -> is_connected_gui)
     {
@@ -720,7 +742,8 @@ void *init_timer_function(void *ptr)
         if (ctx -> args -> window[index].is_packet_full)
         {
             send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                        ctx -> args -> window, &ctx -> args -> window[index].pt, &err);
+                        ctx -> args -> window, &ctx -> args -> window[index].pt,
+                        ctx -> args -> sent_data, &err);
 
             if (ctx -> args -> is_connected_gui)
             {
@@ -747,7 +770,8 @@ void *init_window_checker_function(void *ptr)
 
             create_data_packet(&pt, ctx -> args -> window, ctx -> args -> head->data);
             send_packet(ctx -> args -> sockfd, &ctx -> args -> server_addr_struct,
-                        ctx -> args -> window, &pt, err);
+                        ctx -> args -> window, &pt, ctx -> args -> sent_data,
+                        err);
 
             create_timer_thread_handler(ctx, err);
             pop(&ctx -> args -> head);
@@ -776,4 +800,18 @@ void *init_gui_function(void *ptr)
     }
 
     return NULL;
+}
+
+int create_file(const char *filepath, FILE **fp, struct fsm_error *err)
+{
+    *fp = fopen(filepath, "w");
+
+    if(*fp == NULL)
+    {
+        SET_ERROR(err, "Error in opening file.");
+
+        return -1;
+    }
+
+    return 0;
 }
