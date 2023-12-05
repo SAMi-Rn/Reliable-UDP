@@ -119,7 +119,8 @@ int main(int argc, char **argv)
     struct fsm_error err;
     struct arguments args = {
             .head           = NULL,
-            .is_buffered    = 0
+            .is_buffered    = 0,
+            .window_size    = 101
     };
     struct fsm_context context = {
             .argc           = argc,
@@ -557,25 +558,36 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     ctx = context;
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
     pthread_join(ctx -> args -> recv_thread, NULL);
-    if (socket_close(ctx -> args -> sockfd, err))
-    {
-        printf("close socket error");
-    }
 
     for (int i = 0; i < ctx -> args -> num_of_threads; i++)
     {
         pthread_join(ctx -> args -> thread_pool[i], NULL);
     }
 
-    if (socket_close(ctx -> args -> client_gui_fd, err))
+    if (ctx -> args -> sockfd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> sockfd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> connected_gui_fd, err))
+    if (ctx -> args -> client_gui_fd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> client_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
+
+    if (ctx -> args -> connected_gui_fd)
+    {
+        if (socket_close(ctx -> args -> connected_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
+    }
+
 
     free(ctx -> args -> thread_pool);
     free(ctx -> args -> window);

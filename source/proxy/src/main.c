@@ -122,11 +122,11 @@ int main(int argc, char **argv)
 
     struct fsm_error err;
     struct arguments args = {
-            .client_delay_rate  = 101,
-            .client_drop_rate   = 101,
-            .server_delay_rate  = 101,
-            .server_drop_rate   = 101,
-            .corruption_rate    = 101,
+            .client_delay_rate  = 0,
+            .client_drop_rate   = 0,
+            .server_delay_rate  = 0,
+            .server_drop_rate   = 0,
+            .corruption_rate    = 0,
             .num_of_threads     = 0,
             .is_connected_gui   = 0
     };
@@ -205,9 +205,7 @@ static int handle_arguments_handler(struct fsm_context *context, struct fsm_erro
                          ctx -> args -> client_addr, ctx -> args -> server_port_str,
                          ctx -> args -> proxy_addr, ctx -> args -> client_port_str,
                          &ctx -> args -> server_port, &ctx -> args -> client_port,
-                         ctx -> args -> client_delay_rate, ctx -> args -> client_drop_rate,
-                         ctx -> args -> server_delay_rate, ctx -> args -> server_drop_rate,
-                         ctx -> args -> corruption_rate, err) != 0)
+                         err) != 0)
     {
         return STATE_ERROR;
     }
@@ -530,25 +528,39 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     ctx = context;
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
     pthread_join(ctx -> args -> server_thread, NULL);
-    if (socket_close(ctx -> args -> client_sockfd, err))
+
+    if (ctx -> args -> client_sockfd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> client_sockfd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> server_sockfd, err))
+    if (ctx -> args -> server_sockfd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> server_sockfd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> proxy_gui_fd, err))
+    if (ctx -> args -> proxy_gui_fd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> proxy_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> connected_gui_fd, err))
+    if (ctx -> args -> connected_gui_fd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> connected_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
+
 
     fclose(ctx -> args -> sent_data);
     fclose(ctx -> args -> received_data);

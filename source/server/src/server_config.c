@@ -97,7 +97,10 @@ int convert_address(const char *address, struct sockaddr_storage *addr,
     }
     else
     {
-        SET_ERROR(err, "Address family not supported");
+        char message[90];
+        snprintf(message, sizeof(message), "Address family not supported for IP address: %s", address);
+
+        SET_ERROR(err, message);
         return -1;
     }
 

@@ -139,6 +139,8 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, client_drop_rate, err) == -1)
                 {
+//                    printf("The -D flag: \n");
+                    strcat(err->err_msg, " in the -D flag\n");
                     return -1;
                 }
                 break;
@@ -163,6 +165,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, server_drop_rate, err) == -1)
                 {
+                    strcat(err->err_msg, " in the -d flag\n");
                     return -1;
                 }
                 break;
@@ -188,6 +191,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, client_delay_rate, err) == -1)
                 {
+                    strcat(err->err_msg, " in the -L flag\n");
                     return -1;
                 }
                 break;
@@ -212,6 +216,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, server_delay_rate, err) == -1)
                 {
+                    strcat(err->err_msg, " in the -l flag\n");
                     return -1;
                 }
                 break;
@@ -236,6 +241,7 @@ int                 parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, corruption_rate, err) == -1)
                 {
+                    strcat(err->err_msg, " in the -E flag\n");
                     return -1;
                 }
                 break;
@@ -289,29 +295,11 @@ int handle_arguments(const char *binary_name, const char *server_addr,
                      const char *client_addr, const char *server_port_str,
                      const char *proxy_addr,  const char *client_port_str,
                      in_port_t *server_port, in_port_t *client_port,
-                     uint8_t client_delay_rate, uint8_t client_drop_rate,
-                     uint8_t server_delay_rate, uint8_t server_drop_rate,
-                     uint8_t corruption_rate, struct fsm_error *err)
+                     struct fsm_error *err)
 {
     if(client_addr == NULL)
     {
-        SET_ERROR(err, "The client_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(server_addr == NULL)
-    {
-        SET_ERROR(err, "The server_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(server_port_str == NULL)
-    {
-        SET_ERROR(err, "The server port is required.");
+        SET_ERROR(err, "The client IP address is required.");
         usage(binary_name);
 
         return -1;
@@ -325,61 +313,79 @@ int handle_arguments(const char *binary_name, const char *server_addr,
         return -1;
     }
 
+    if(server_addr == NULL)
+    {
+        SET_ERROR(err, "The server IP address is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_port_str == NULL)
+    {
+        SET_ERROR(err, "The server port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
     if(proxy_addr == NULL)
     {
-        SET_ERROR(err, "The proxy_addr is required.");
+        SET_ERROR(err, "The proxy IP address is required.");
         usage(binary_name);
 
         return -1;
     }
-
-    if(client_drop_rate > 100)
-    {
-        SET_ERROR(err, "The client drop rate is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(client_delay_rate > 100)
-    {
-        SET_ERROR(err, "The client delay rate is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(server_drop_rate > 100)
-    {
-        SET_ERROR(err, "The server drop rate is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(server_delay_rate > 100)
-    {
-        SET_ERROR(err, "The server delay rate is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(corruption_rate > 100)
-    {
-        SET_ERROR(err, "The corruption rate is required.");
-        usage(binary_name);
-
-        return -1;
-    }
+//
+//    if(client_drop_rate > 100)
+//    {
+//        SET_ERROR(err, "The client drop rate is required.");
+//        usage(binary_name);
+//
+//        return -1;
+//    }
+//
+//    if(client_delay_rate > 100)
+//    {
+//        SET_ERROR(err, "The client delay rate is required.");
+//        usage(binary_name);
+//
+//        return -1;
+//    }
+//
+//    if(server_drop_rate > 100)
+//    {
+//        SET_ERROR(err, "The server drop rate is required.");
+//        usage(binary_name);
+//
+//        return -1;
+//    }
+//
+//    if(server_delay_rate > 100)
+//    {
+//        SET_ERROR(err, "The server delay rate is required.");
+//        usage(binary_name);
+//
+//        return -1;
+//    }
+//
+//    if(corruption_rate > 100)
+//    {
+//        SET_ERROR(err, "The corruption rate is required.");
+//        usage(binary_name);
+//
+//        return -1;
+//    }
 
     if (parse_in_port_t(binary_name, server_port_str, server_port, err) == -1)
     {
+        printf("for port: %s\n", server_port_str);
         return -1;
     }
 
     if (parse_in_port_t(binary_name, client_port_str, client_port, err) == -1)
     {
+        printf("for port: %s\n", client_port_str);
         return -1;
     }
 
@@ -448,8 +454,8 @@ int convert_to_int(const char *binary_name, char *string, uint8_t *value, struct
 
     if (parsed_value > 100)
     {
-        char error_message[25];
-        snprintf(error_message, sizeof(error_message), "%s value out of range.", string);
+        char error_message[95];
+        snprintf(error_message, sizeof(error_message), "%ju value out of range", parsed_value);
         SET_ERROR(err, error_message);
         usage(binary_name);
 

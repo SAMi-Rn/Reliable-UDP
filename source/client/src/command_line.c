@@ -106,6 +106,7 @@ int parse_arguments(int argc, char *argv[], char **server_addr,
 
                 if (convert_to_int(argv[0], temp, window_size, err) == -1)
                 {
+//                    printf("In the -w flag\n");
                     return -1;
                 }
                 break;
@@ -155,25 +156,9 @@ int handle_arguments(const char *binary_name, const char *server_addr,
                                      in_port_t *client_port, uint8_t window_size,
                                      struct fsm_error *err)
 {
-    if(server_addr == NULL)
-    {
-        SET_ERROR(err, "The server_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
     if(client_addr == NULL)
     {
-        SET_ERROR(err, "The client_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(server_port_str == NULL)
-    {
-        SET_ERROR(err, "The server_port_str is required.");
+        SET_ERROR(err, "The client IP address is required.");
         usage(binary_name);
 
         return -1;
@@ -181,7 +166,31 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 
     if(client_port_str == NULL)
     {
-        SET_ERROR(err, "The client_port_str is required.");
+        SET_ERROR(err, "The client port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_addr == NULL)
+    {
+        SET_ERROR(err, "The server IP address is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(server_port_str == NULL)
+    {
+        SET_ERROR(err, "The server port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(window_size > 100)
+    {
+        SET_ERROR(err, "window size is required");
         usage(binary_name);
 
         return -1;
@@ -197,16 +206,17 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 
     if (parse_in_port_t(binary_name, server_port_str, server_port, err) == -1)
     {
+        printf("for port: %s\n", server_port_str);
         return -1;
     }
 
     if (parse_in_port_t(binary_name, client_port_str, client_port, err) == -1)
     {
+        printf("for port: %s\n", client_port_str);
         return -1;
     }
 
     return 0;
-;
 }
 
 int parse_in_port_t(const char *binary_name, const char *str, in_port_t *port, struct fsm_error *err)

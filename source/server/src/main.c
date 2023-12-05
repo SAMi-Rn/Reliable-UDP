@@ -485,19 +485,29 @@ static int cleanup_handler(struct fsm_context *context, struct fsm_error *err)
     SET_TRACE(context, "in cleanup handler", "STATE_CLEANUP");
 
     pthread_join(ctx -> args -> accept_gui_thread, NULL);
-    if (socket_close(ctx -> args -> sockfd, err))
+
+    if (ctx -> args -> sockfd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> sockfd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> server_gui_fd, err))
+    if (ctx -> args -> server_gui_fd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> server_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
-    if (socket_close(ctx -> args -> connected_gui_fd, err))
+    if (ctx -> args -> connected_gui_fd)
     {
-        printf("close socket error");
+        if (socket_close(ctx -> args -> connected_gui_fd, err) == -1)
+        {
+            printf("close socket error\n");
+        }
     }
 
     fclose(ctx -> args -> sent_data);
