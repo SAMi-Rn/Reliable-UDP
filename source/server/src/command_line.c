@@ -131,15 +131,7 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 {
     if(server_addr == NULL)
     {
-        SET_ERROR(err, "The server_addr is required.");
-        usage(binary_name);
-
-        return -1;
-    }
-
-    if(client_addr == NULL)
-    {
-        SET_ERROR(err, "The client_addr is required.");
+        SET_ERROR(err, "The server IP address is required.");
         usage(binary_name);
 
         return -1;
@@ -147,7 +139,15 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 
     if(server_port_str == NULL)
     {
-        SET_ERROR(err, "The server_port is required.");
+        SET_ERROR(err, "The server port is required.");
+        usage(binary_name);
+
+        return -1;
+    }
+
+    if(client_addr == NULL)
+    {
+        SET_ERROR(err, "The client IP address is required.");
         usage(binary_name);
 
         return -1;
@@ -155,7 +155,7 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 
     if(client_port_str == NULL)
     {
-        SET_ERROR(err, "The server_port is required.");
+        SET_ERROR(err, "The client port is required.");
         usage(binary_name);
 
         return -1;
@@ -163,13 +163,16 @@ int handle_arguments(const char *binary_name, const char *server_addr,
 
     if (parse_in_port_t(binary_name, server_port_str, server_port, err) == -1)
     {
+        printf("for port: %s\n", server_port_str);
         return -1;
     }
 
     if (parse_in_port_t(binary_name, client_port_str, client_port, err) == -1)
     {
+        printf("for port: %s\n", client_port_str);
         return -1;
     }
+
 
     return 0;
 }
