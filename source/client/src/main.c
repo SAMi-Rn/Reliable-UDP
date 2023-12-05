@@ -513,10 +513,6 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
         return STATE_ERROR;
     }
 
-    for (int i = 0; i < ctx -> args -> window_size; i++)
-    {
-        printf("window empty: %u\n", ctx -> args -> window[i].is_packet_full);
-    }
     printf("Client packet with SEQ number: %u sent\n", ctx -> args -> temp_message.hd.seq_number);
 
     if (ctx -> args -> is_connected_gui)
