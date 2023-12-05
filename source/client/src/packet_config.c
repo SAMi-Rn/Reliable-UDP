@@ -194,6 +194,26 @@ int remove_packet_from_window(struct sent_packet *window, struct packet *pt)
 {
     if (window[first_unacked_packet].expected_ack_number == pt->hd.ack_number)
     {
+        remove_single_packet(window, pt);
+
+        return 0;
+    }
+    else if (window[first_unacked_packet].expected_ack_number < pt->hd.ack_number)
+    {
+        remove_cumulative_packets(window, pt);
+
+        return 0;
+    }
+
+    return -1;
+}
+
+int remove_single_packet(struct sent_packet *window, struct packet *pt)
+{
+    if (window[first_unacked_packet].expected_ack_number == pt->hd.ack_number)
+    {
+        printf("removing packet with expected ack number: %u at index: %u\n",
+               window[first_unacked_packet].expected_ack_number, first_unacked_packet);
         window[first_unacked_packet].is_packet_full = FALSE;
         first_unacked_ring_buffer(window);
 
@@ -201,6 +221,54 @@ int remove_packet_from_window(struct sent_packet *window, struct packet *pt)
     }
 
     return 0;
+}
+
+int remove_cumulative_packets(struct sent_packet *window, struct packet *pt)
+{
+    uint8_t index;
+
+    index = get_ack_number_index(pt->hd.ack_number, window);
+
+    if (index > first_unacked_packet)
+    {
+        remove_greater_index(window, index);
+    }
+    else if (index < first_unacked_packet)
+    {
+        remove_lesser_index(window, index);
+    }
+    else
+    {
+        return -1;
+    }
+
+    first_unacked_packet = index;
+    first_unacked_ring_buffer(window);
+
+    return 0;
+}
+
+int remove_lesser_index(struct sent_packet *window, uint8_t index)
+{
+    for (uint8_t i = 0; i <= index; i++)
+    {
+        printf("removing packet with expected ack number: %u at index: %u\n", window[i].expected_ack_number, i);
+        window[i].is_packet_full = FALSE;
+    }
+
+    remove_greater_index(window, window_size - 1);
+
+    return 0;
+}
+int remove_greater_index(struct sent_packet *window, uint8_t index)
+{
+   for (uint8_t i = first_unacked_packet; i <= index; i++)
+   {
+       printf("removing packet with expected ack number: %u at index: %u\n", window[i].expected_ack_number, i);
+       window[i].is_packet_full = FALSE;
+   }
+
+   return 0;
 }
 
 uint32_t create_second_handshake_seq_number(void)
@@ -248,9 +316,44 @@ uint32_t previous_ack_number(struct sent_packet *window)
     return window[first_empty_packet - 1].pt.hd.ack_number;
 }
 
-int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number)
+int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number, struct sent_packet *window)
+{
+    return  check_ack_number_equal(expected_ack_number, ack_number)||
+            check_ack_number_greater(expected_ack_number, ack_number, window);
+}
+
+int check_ack_number_equal(uint32_t expected_ack_number, uint32_t ack_number)
 {
     return expected_ack_number == ack_number ? TRUE : FALSE;
+}
+
+int check_ack_number_greater(uint32_t expected_ack_number, uint32_t ack_number, struct sent_packet *window)
+{
+    if (ack_number > expected_ack_number)
+    {
+        for (int i = 0; i < window_size; i++)
+        {
+            if (window[i].expected_ack_number == ack_number)
+            {
+                return TRUE;
+            }
+        }
+    }
+
+    return FALSE;
+}
+
+int get_ack_number_index(uint32_t ack_number, struct sent_packet *window)
+{
+    for (int i = 0; i < window_size; i++)
+    {
+        if (window[i].expected_ack_number == ack_number)
+        {
+            return i;
+        }
+    }
+
+    return -1;
 }
 
 int previous_index(struct sent_packet *window)

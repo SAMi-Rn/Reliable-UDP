@@ -517,7 +517,7 @@ static int send_message_handler(struct fsm_context *context, struct fsm_error *e
     {
         printf("window empty: %u\n", ctx -> args -> window[i].is_packet_full);
     }
-    printf("Client packet with SYN number: %u sent\n", ctx -> args -> temp_message.hd.seq_number);
+    printf("Client packet with SEQ number: %u sent\n", ctx -> args -> temp_message.hd.seq_number);
 
     if (ctx -> args -> is_connected_gui)
     {
@@ -649,7 +649,7 @@ static int check_ack_number_handler(struct fsm_context *context, struct fsm_erro
     {
         printf("received ack\n");
         if (check_ack_number(ctx -> args -> window[first_unacked_packet].expected_ack_number,
-                             ctx -> args -> temp_packet.hd.ack_number))
+                             ctx -> args -> temp_packet.hd.ack_number, ctx -> args -> window))
         {
             return STATE_REMOVE_FROM_WINDOW;
         }
