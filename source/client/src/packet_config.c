@@ -318,6 +318,11 @@ uint32_t previous_ack_number(struct sent_packet *window)
 
 int check_ack_number(uint32_t expected_ack_number, uint32_t ack_number, struct sent_packet *window)
 {
+    if(window[first_unacked_packet].is_packet_full == FALSE)
+    {
+        return FALSE;
+    }
+
     return  check_ack_number_equal(expected_ack_number, ack_number)||
             check_ack_number_greater(expected_ack_number, ack_number, window);
 }
