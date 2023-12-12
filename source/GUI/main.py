@@ -90,9 +90,9 @@ def start_plot(server_id, data):
 
 
 def start(data):
-    server_descriptions = [('Server', '192.168.1.80', 61000),
-                           ('Client', '192.168.1.80', 61001),
-                           ('Proxy', '192.168.1.80', 61060)]
+    server_descriptions = [('Server', '10.65.75.181', 61000),
+                           ('Client', '10.65.75.181', 61001),
+                           ('Proxy', '10.65.75.181', 61060)]
     processes = []
 
     for i, (description, host, port) in enumerate(server_descriptions):
