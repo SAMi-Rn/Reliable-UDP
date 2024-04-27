@@ -15,24 +15,29 @@ A simulation of a reliable UDP-based network protocol developed for BCIT's Netwo
 ## Installation
 
 Clone the repository and build the server, client, and proxy modules, as well as run the GUI with the following commands:
+
+### Clone the repository
 ```sh
-# Clone the repository
 git clone https://github.com/BScACS-T2/reliable-udp.git
 cd reliable-udp
-
-# Build the Server
+```
+### Build the Server
+```sh
 mkdir -p server/cmake-build-debug && cd server/cmake-build-debug
 cmake ..
 make
 cd ../../
+```
 
-# Build the Client
+### Build the Client
+```sh
 mkdir -p client/cmake-build-debug && cd client/cmake-build-debug
 cmake ..
 make
 cd ../../
-
-# Build the Proxy
+```
+### Build the Proxy
+```sh
 mkdir -p proxy/cmake-build-debug && cd proxy/cmake-build-debug
 cmake ..
 make
