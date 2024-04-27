@@ -48,18 +48,22 @@ cd ../../
 Run the server, client, and proxy using the following commands. Remember to replace the placeholder IP addresses and ports with the actual values you're using:
 
 ### Run the Server
+```sh
 ./server -C <Client IP> -c <Client port> -S <Server IP> -s <Server port>
-
+```
 ### Run the Client
+```sh
 ./client -C <Client IP> -c <Client port> -S <Server IP> -s <Server port> -w <window size>
-
+```
 ### Run the Proxy
+```sh
 ./proxy -C <Client IP> -c <Client port> -S <Server IP> -s <Server port> -P <Proxy IP> \
 -D <Client drop rate> -d <Server drop rate> -L <Client delay rate> -l <Server delay rate> -E <Corruption rate>
-
+```
 ### Run the GUI
+```sh
 python3 main.py
-
+```
 ## Dynamic Protocol Features
 - Window-based transmission is managed with the -w flag on the client.
 - Proxy lossiness can be simulated with the -D, -d, -L, -l, and -E flags.
