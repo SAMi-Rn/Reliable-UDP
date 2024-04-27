@@ -36,7 +36,8 @@ cd ../../
 mkdir -p proxy/cmake-build-debug && cd proxy/cmake-build-debug
 cmake ..
 make
-cd ../../```
+cd ../../
+```
 
 ## Usage
 Run the server, client, and proxy using the following commands. Remember to replace the placeholder IP addresses and ports with the actual values you're using:
