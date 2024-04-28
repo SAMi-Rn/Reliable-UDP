@@ -18,8 +18,8 @@ Clone the repository and build the server, client, and proxy modules, as well as
 
 ### Clone the repository
 ```sh
-git clone https://github.com/BScACS-T2/reliable-udp.git
-cd reliable-udp
+git clone https://github.com/BScACS-T2/Reliable-UDP.git
+cd Reliable-UDP
 ```
 ### Build the Server
 ```sh
